@@ -12,6 +12,7 @@
     "copy-config": "cp -r xml/* android/app/src/*",
     "build": "yarn build-android-release",
     "build-android-release": "NODE_ENV=production EXPO_TV=1 yarn prebuild-android && cd android && ./gradlew assembleRelease",
+    "build-apk": "bash ./scripts/build-apk.sh",
     "build-debug": "cd android && ./gradlew assembleDebug",
     "test": "jest --watchAll",
     "test-ci": "jest --ci --coverage --no-cache",

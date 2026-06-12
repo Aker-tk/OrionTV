@@ -3,6 +3,7 @@ import { api, PlayRecord as ApiPlayRecord, Favorite as ApiFavorite } from "./api
 import { storageConfig } from "./storageConfig";
 import { LOCAL_MODE_BASE_URL } from "@/utils/localMode";
 import Logger from '@/utils/Logger';
+import { DEFAULT_LIVE_STREAM_M3U_URL } from "@/constants/live";
 
 const logger = Logger.withTag('Storage');
 
@@ -322,7 +323,7 @@ export class SettingsManager {
         enabledAll: true,
         sources: {},
       },
-      m3uUrl: "",
+      m3uUrl: DEFAULT_LIVE_STREAM_M3U_URL,
     };
     try {
       const data = await AsyncStorage.getItem(STORAGE_KEYS.SETTINGS);

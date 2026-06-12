@@ -5,6 +5,7 @@ import { storageConfig } from "@/services/storageConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LOCAL_MODE_BASE_URL, normalizeApiBaseUrl } from "@/utils/localMode";
 import Logger from "@/utils/Logger";
+import { DEFAULT_LIVE_STREAM_M3U_URL } from "@/constants/live";
 
 const logger = Logger.withTag('SettingsStore');
 
@@ -34,7 +35,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   apiBaseUrl: LOCAL_MODE_BASE_URL,
-  m3uUrl: "",
+  m3uUrl: DEFAULT_LIVE_STREAM_M3U_URL,
   liveStreamSources: [],
   remoteInputEnabled: false,
   isModalVisible: false,

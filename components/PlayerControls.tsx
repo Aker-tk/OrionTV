@@ -39,8 +39,8 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({ showControls, se
   const videoTitle = detail?.title || "";
   const currentEpisode = episodes[currentEpisodeIndex];
   const currentEpisodeTitle = currentEpisode?.title;
-  const currentSource = resources.find((r) => r.source === detail?.source);
-  const currentSourceName = currentSource?.source_name;
+  const currentSource = resources.find((r) => r.key === detail?.source);
+  const currentSourceName = currentSource?.name;
   const hasNextEpisode = currentEpisodeIndex < (episodes.length || 0) - 1;
 
   const formatTime = (milliseconds: number) => {

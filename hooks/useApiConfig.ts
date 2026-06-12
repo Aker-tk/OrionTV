@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { api } from '@/services/api';
-
-export interface ApiConfigStatus {
-  isConfigured: boolean;
-  isValidating: boolean;
-  isValid: boolean | null;
-  error: string | null;
-  needsConfiguration: boolean;
-}
+import { buildApiConfigStatus, ApiConfigStatus } from './apiConfigState';
+import { isLocalModeApiBaseUrl } from '@/utils/localMode';
 
 export const useApiConfig = () => {
   const { apiBaseUrl, serverConfig, isLoadingServerConfig } = useSettingsStore();
@@ -23,14 +17,14 @@ export const useApiConfig = () => {
   });
 
   const isConfigured = Boolean(apiBaseUrl && apiBaseUrl.trim());
-  const needsConfiguration = !isConfigured;
+  const isLocalMode = isLocalModeApiBaseUrl(apiBaseUrl);
 
   // Validate API configuration when it changes
   useEffect(() => {
-    if (!isConfigured) {
+    if (!isConfigured || isLocalMode) {
       setValidationState({
         isValidating: false,
-        isValid: false,
+        isValid: isLocalMode ? true : false,
         error: null,
       });
       return;
@@ -83,7 +77,7 @@ export const useApiConfig = () => {
     if (!isLoadingServerConfig) {
       validateConfig();
     }
-  }, [apiBaseUrl, isConfigured, isLoadingServerConfig]);
+  }, [apiBaseUrl, isConfigured, isLoadingServerConfig, isLocalMode]);
 
   // Reset validation when server config loading state changes
   useEffect(() => {
@@ -94,7 +88,7 @@ export const useApiConfig = () => {
 
   // Update validation state based on server config
   useEffect(() => {
-    if (!isLoadingServerConfig && isConfigured) {
+    if (!isLoadingServerConfig && isConfigured && !isLocalMode) {
       if (serverConfig) {
         setValidationState(prev => ({ ...prev, isValid: true, error: null }));
       } else {
@@ -105,22 +99,21 @@ export const useApiConfig = () => {
         }));
       }
     }
-  }, [serverConfig, isLoadingServerConfig, isConfigured]);
+  }, [serverConfig, isLoadingServerConfig, isConfigured, isLocalMode]);
 
-  const status: ApiConfigStatus = {
-    isConfigured,
-    isValidating: validationState.isValidating || isLoadingServerConfig,
-    isValid: validationState.isValid,
-    error: validationState.error,
-    needsConfiguration,
-  };
+  const status = buildApiConfigStatus({
+    apiBaseUrl,
+    serverConfig,
+    isLoadingServerConfig,
+    validationState,
+  });
 
   return status;
 };
 
 export const getApiConfigErrorMessage = (status: ApiConfigStatus): string => {
   if (status.needsConfiguration) {
-    return '请点击右上角设置按钮，配置您的服务器地址';
+    return '请点击右上角设置按钮，配置兼容服务器地址，或直接使用内置 LunaTV';
   }
 
   if (status.error) {
@@ -128,7 +121,7 @@ export const getApiConfigErrorMessage = (status: ApiConfigStatus): string => {
   }
 
   if (status.isValidating) {
-    return '正在验证服务器配置...';
+    return '正在验证兼容服务器配置...';
   }
 
   if (status.isValid === false) {

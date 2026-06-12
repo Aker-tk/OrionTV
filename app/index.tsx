@@ -187,7 +187,7 @@ export default function HomeScreen() {
   };
 
   // 检查是否需要显示API配置提示
-  const shouldShowApiConfig = apiConfigStatus.needsConfiguration && selectedCategory && !selectedCategory.tags;
+  const shouldShowApiConfig = !apiConfigStatus.isLocalMode && apiConfigStatus.needsConfiguration && selectedCategory && !selectedCategory.tags;
 
   // TV端和平板端的顶部导航
   const renderHeader = () => {
@@ -335,7 +335,7 @@ export default function HomeScreen() {
         <View style={commonStyles.center}>
           <ActivityIndicator size="large" />
           <ThemedText type="subtitle" style={{ padding: spacing, textAlign: "center" }}>
-            正在验证服务器配置...
+            {apiConfigStatus.isLocalMode ? "正在初始化本地模式..." : "正在验证服务器配置..."}
           </ThemedText>
         </View>
       ) : apiConfigStatus.error && !apiConfigStatus.isValid ? (

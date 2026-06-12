@@ -87,7 +87,7 @@ export const APIConfigSection = forwardRef<APIConfigSectionRef, APIConfigSection
       >
         <View style={styles.inputContainer}>
           <View style={styles.titleContainer}>
-            <ThemedText style={styles.sectionTitle}>API 地址</ThemedText>
+            <ThemedText style={styles.sectionTitle}>兼容服务器地址</ThemedText>
             {!hideDescription && remoteInputEnabled && serverUrl && (
               <ThemedText style={styles.subtitle}>用手机访问 {serverUrl}，可远程输入</ThemedText>
             )}
@@ -98,7 +98,7 @@ export const APIConfigSection = forwardRef<APIConfigSectionRef, APIConfigSection
               style={[styles.input, isInputFocused && styles.inputFocused]}
               value={apiBaseUrl}
               onChangeText={handleUrlChange}
-              placeholder="输入服务器地址"
+              placeholder="留空使用内置 LunaTV，本项仅用于兼容远端模式"
               placeholderTextColor="#888"
               autoCapitalize="none"
               autoCorrect={false}

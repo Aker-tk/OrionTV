@@ -4,6 +4,7 @@ import { api } from "@/services/api";
 import { useSettingsStore } from "./settingsStore";
 import Toast from "react-native-toast-message";
 import Logger from "@/utils/Logger";
+import { isLocalModeApiBaseUrl } from "@/utils/localMode";
 
 const logger = Logger.withTag('AuthStore');
 
@@ -22,6 +23,20 @@ const useAuthStore = create<AuthState>((set) => ({
   showLoginModal: () => set({ isLoginModalVisible: true }),
   hideLoginModal: () => set({ isLoginModalVisible: false }),
   checkLoginStatus: async (apiBaseUrl?: string) => {
+    if (isLocalModeApiBaseUrl(apiBaseUrl)) {
+      try {
+        const loginResult = await api.login();
+        set({
+          isLoggedIn: Boolean(loginResult.ok),
+          isLoginModalVisible: false,
+        });
+      } catch (error) {
+        logger.error("Failed to auto-login local mode:", error);
+        set({ isLoggedIn: false, isLoginModalVisible: false });
+      }
+      return;
+    }
+
     if (!apiBaseUrl) {
       set({ isLoggedIn: false, isLoginModalVisible: false });
       return;

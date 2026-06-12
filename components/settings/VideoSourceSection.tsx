@@ -5,6 +5,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { SettingsSection } from "./SettingsSection";
 import { useSettingsStore } from "@/stores/settingsStore";
 import useSourceStore, { useSources } from "@/stores/sourceStore";
+import { ApiSite } from "@/services/luna";
 
 interface VideoSourceSectionProps {
   onChanged: () => void;
@@ -45,7 +46,7 @@ export const VideoSourceSection: React.FC<VideoSourceSectionProps> = ({ onChange
         if (focusedIndex !== null) {
           const resource = resources[focusedIndex];
           if (resource) {
-            handleToggle(resource.source);
+            handleToggle(resource.key);
           }
         } else if (isSectionFocused) {
           setFocusedIndex(0);
@@ -57,8 +58,8 @@ export const VideoSourceSection: React.FC<VideoSourceSectionProps> = ({ onChange
 
   useTVEventHandler(handleTVEvent);
 
-  const renderResourceItem = ({ item, index }: { item: { source: string; source_name: string }; index: number }) => {
-    const isEnabled = videoSource.enabledAll || videoSource.sources[item.source];
+  const renderResourceItem = ({ item, index }: { item: ApiSite; index: number }) => {
+    const isEnabled = videoSource.enabledAll || videoSource.sources[item.key];
     const isFocused = focusedIndex === index;
 
     return (
@@ -69,7 +70,7 @@ export const VideoSourceSection: React.FC<VideoSourceSectionProps> = ({ onChange
           onFocus={() => setFocusedIndex(index)}
           onBlur={() => setFocusedIndex(null)}
         >
-          <ThemedText style={styles.resourceName}>{item.source_name}</ThemedText>
+              <ThemedText style={styles.resourceName}>{item.name}</ThemedText>
           <Switch
             value={isEnabled}
             onValueChange={() => {}} // 禁用Switch的直接交互
@@ -86,11 +87,11 @@ export const VideoSourceSection: React.FC<VideoSourceSectionProps> = ({ onChange
     <SettingsSection focusable onFocus={handleSectionFocus} onBlur={handleSectionBlur}>
       <ThemedText style={styles.sectionTitle}>播放源配置</ThemedText>
 
-      {resources.length > 0 && (
+            {resources.length > 0 && (
         <FlatList
           data={resources}
           renderItem={renderResourceItem}
-          keyExtractor={(item) => item.source}
+          keyExtractor={(item) => item.key}
           numColumns={3}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.flatListContainer}

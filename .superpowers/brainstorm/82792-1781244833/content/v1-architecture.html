@@ -1,0 +1,111 @@
+<h2>LunaTV 配置中心 V1 架构</h2>
+<p class="subtitle">目标：让 LunaTV 做统一内容配置后台，OrionTV 只负责拉取并消费配置</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">核心数据流</div>
+    <div class="mockup-body">
+      <div style="display:grid;grid-template-columns:1fr 80px 1fr 80px 1fr;gap:16px;align-items:center;">
+        <div style="background:#111827;color:#fff;border-radius:16px;padding:18px;min-height:240px;">
+          <div class="label" style="color:#93c5fd;">中心后台</div>
+          <h3 style="margin-top:6px;">LunaTV Admin</h3>
+          <ul style="line-height:1.8;margin-top:10px;padding-left:18px;">
+            <li>点播源 SourceConfig</li>
+            <li>直播源 LiveConfig</li>
+            <li>分类 CustomCategories</li>
+            <li>公告 Announcement</li>
+          </ul>
+          <div style="margin-top:14px;padding:10px 12px;border-radius:12px;background:#1f2937;">
+            复用现有 admin 页面与存储能力
+          </div>
+        </div>
+
+        <div style="text-align:center;font-size:32px;color:#2563eb;">→</div>
+
+        <div style="background:#eff6ff;border:2px solid #93c5fd;border-radius:16px;padding:18px;min-height:240px;">
+          <div class="label" style="color:#1d4ed8;">适配层</div>
+          <h3 style="margin-top:6px;">Orion Config API</h3>
+          <ul style="line-height:1.8;margin-top:10px;padding-left:18px;">
+            <li>读取 LunaTV AdminConfig</li>
+            <li>裁剪 V1 允许字段</li>
+            <li>转换为 TV 稳定结构</li>
+            <li>输出版本号 / 更新时间</li>
+          </ul>
+          <div style="margin-top:14px;padding:10px 12px;border-radius:12px;background:#dbeafe;">
+            推荐新增独立接口，不让 TV 端直接吃后台内部模型
+          </div>
+        </div>
+
+        <div style="text-align:center;font-size:32px;color:#2563eb;">→</div>
+
+        <div style="background:#0f172a;color:#fff;border-radius:16px;padding:18px;min-height:240px;">
+          <div class="label" style="color:#86efac;">TV 客户端</div>
+          <h3 style="margin-top:6px;">OrionTV</h3>
+          <ul style="line-height:1.8;margin-top:10px;padding-left:18px;">
+            <li>启动时拉取配置</li>
+            <li>本地缓存配置快照</li>
+            <li>源列表 / 直播页消费</li>
+            <li>设置页只展示内容配置结果</li>
+          </ul>
+          <div style="margin-top:14px;padding:10px 12px;border-radius:12px;background:#1e293b;">
+            V1 不接用户权限、不接设备中心
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">后台负责</div>
+      <div class="mockup-body">
+        <ul style="line-height:1.9;padding-left:18px;">
+          <li>统一维护点播源与直播源</li>
+          <li>统一维护分类入口</li>
+          <li>统一发布公告</li>
+          <li>提供给 TV 的只读配置接口</li>
+        </ul>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">TV 端负责</div>
+      <div class="mockup-body">
+        <ul style="line-height:1.9;padding-left:18px;">
+          <li>拉取并缓存内容配置</li>
+          <li>按配置渲染搜索 / 首页 / 直播</li>
+          <li>保留本地播放与遥控逻辑</li>
+          <li>配置拉取失败时回退本地缓存</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>你可以直接点选一个反馈</h3>
+  <div class="options">
+    <div class="option" data-choice="a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>方向正确</h3>
+        <p>按这个 V1 架构继续往下细化接口和页面范围</p>
+      </div>
+    </div>
+    <div class="option" data-choice="b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>后台太轻</h3>
+        <p>希望 V1 再多加一些管理内容</p>
+      </div>
+    </div>
+    <div class="option" data-choice="c" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>TV 太保守</h3>
+        <p>希望 OrionTV 在 V1 就接受更多远端控制</p>
+      </div>
+    </div>
+  </div>
+</div>

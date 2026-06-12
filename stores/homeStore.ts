@@ -1,8 +1,10 @@
 import { create } from "zustand";
-import { api, SearchResult, PlayRecord } from "@/services/api";
+import { api } from "@/services/api";
+import type { SearchResult, PlayRecord } from "@/services/api";
 import { PlayRecordManager } from "@/services/storage";
 import useAuthStore from "./authStore";
 import { useSettingsStore } from "./settingsStore";
+import { LOCAL_MODE_BASE_URL } from "@/utils/localMode";
 
 export type RowItem = (SearchResult | PlayRecord) & {
   id: string;
@@ -106,7 +108,7 @@ const useHomeStore = create<HomeState>((set, get) => ({
 
   fetchInitialData: async () => {
     const { apiBaseUrl } = useSettingsStore.getState();
-    await useAuthStore.getState().checkLoginStatus(apiBaseUrl);
+    await useAuthStore.getState().checkLoginStatus(apiBaseUrl || LOCAL_MODE_BASE_URL);
 
     const { selectedCategory } = get();
     const cacheKey = getCacheKey(selectedCategory);
@@ -251,7 +253,7 @@ const useHomeStore = create<HomeState>((set, get) => ({
       let errorMessage = "加载失败，请重试";
 
       if (err.message === "API_URL_NOT_SET") {
-        errorMessage = "请点击右上角设置按钮，配置您的服务器地址";
+        errorMessage = "本地模式未正确初始化，请重启应用后重试";
       } else if (err.message === "UNAUTHORIZED") {
         errorMessage = "认证失败，请重新登录";
       } else if (err.message.includes("Network")) {
@@ -310,7 +312,7 @@ const useHomeStore = create<HomeState>((set, get) => ({
 
   refreshPlayRecords: async () => {
     const { apiBaseUrl } = useSettingsStore.getState();
-    await useAuthStore.getState().checkLoginStatus(apiBaseUrl);
+    await useAuthStore.getState().checkLoginStatus(apiBaseUrl || LOCAL_MODE_BASE_URL);
     const { isLoggedIn } = useAuthStore.getState();
     if (!isLoggedIn) {
       set((state) => {

@@ -177,7 +177,7 @@ export default function DetailScreen() {
           <View style={dynamicStyles.episodesContainer}>
             <ThemedText style={dynamicStyles.episodesTitle}>播放列表</ThemedText>
             <View style={dynamicStyles.episodeList}>
-              {detail.episodes.map((episode, index) => (
+              {detail.episodes.map((episode: string, index: number) => (
                 <StyledButton
                   key={index}
                   style={dynamicStyles.episodeButton}
@@ -258,7 +258,7 @@ export default function DetailScreen() {
             <View style={dynamicStyles.episodesContainer}>
               <ThemedText style={dynamicStyles.episodesTitle}>播放列表</ThemedText>
               <ScrollView contentContainerStyle={dynamicStyles.episodeList}>
-                {detail.episodes.map((episode, index) => (
+                {detail.episodes.map((episode: string, index: number) => (
                   <StyledButton
                     key={index}
                     style={dynamicStyles.episodeButton}

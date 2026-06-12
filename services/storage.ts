@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, PlayRecord as ApiPlayRecord, Favorite as ApiFavorite } from "./api";
 import { storageConfig } from "./storageConfig";
+import { LOCAL_MODE_BASE_URL } from "@/utils/localMode";
 import Logger from '@/utils/Logger';
 
 const logger = Logger.withTag('Storage');
@@ -315,7 +316,7 @@ export class SearchHistoryManager {
 export class SettingsManager {
   static async get(): Promise<AppSettings> {
     const defaultSettings: AppSettings = {
-      apiBaseUrl: "",
+      apiBaseUrl: LOCAL_MODE_BASE_URL,
       remoteInputEnabled: true,
       videoSource: {
         enabledAll: true,

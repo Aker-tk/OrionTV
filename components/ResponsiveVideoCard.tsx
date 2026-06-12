@@ -9,6 +9,7 @@ import { Colors } from "@/constants/Colors";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { DeviceUtils } from "@/utils/DeviceUtils";
 import Logger from '@/utils/Logger';
+import { buildImageSource } from "@/services/imageSource";
 
 const logger = Logger.withTag('ResponsiveVideoCard');
 
@@ -211,7 +212,7 @@ const ResponsiveVideoCard = forwardRef<View, VideoCardProps>(
           delayLongPress={responsiveConfig.deviceType === 'mobile' ? 500 : 1000}
         >
           <View style={dynamicStyles.card}>
-            <Image source={{ uri: api.getImageProxyUrl(poster) }} style={styles.poster} />
+            <Image source={buildImageSource(api.getImageProxyUrl(poster))} style={styles.poster} />
             {(isFocused && responsiveConfig.deviceType === 'tv') && (
               <View style={dynamicStyles.overlay}>
                 {isContinueWatching && (

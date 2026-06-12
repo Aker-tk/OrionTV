@@ -1,4 +1,25 @@
+// services/api.ts
+// 集成本地 LunaTV 逻辑的 API 接口
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LOCAL_MODE_BASE_URL } from "@/utils/localMode";
+import {
+  lunaConfig,
+  searchVideos as lunaSearchVideos,
+  searchFromSingleSource,
+  getVideoDetail as lunaGetVideoDetail,
+  getDoubanData as lunaGetDoubanData,
+  getDoubanCategories as lunaGetDoubanCategories,
+  getDoubanTop250 as lunaGetDoubanTop250,
+  playRecordsStorage,
+  favoritesStorage,
+  searchHistoryStorage,
+  filterYellowContent,
+  VideoDetail,
+  DoubanResponse,
+  ApiSite,
+} from "./luna";
+import { filterMatchingResults } from "./searchMatching";
 
 // region: --- Interface Definitions ---
 export interface DoubanItem {
@@ -7,13 +28,13 @@ export interface DoubanItem {
   rate?: string;
 }
 
-export interface DoubanResponse {
+export interface DoubanResponseLegacy {
   code: number;
   message: string;
   list: DoubanItem[];
 }
 
-export interface VideoDetail {
+export interface VideoDetailLegacy {
   id: string;
   title: string;
   poster: string;
@@ -28,8 +49,8 @@ export interface VideoDetail {
   remarks?: string;
 }
 
-export interface SearchResult {
-  id: number;
+export interface SearchResultLegacy {
+  id: string;
   title: string;
   poster: string;
   episodes: string[];
@@ -41,7 +62,7 @@ export interface SearchResult {
   type_name?: string;
 }
 
-export interface Favorite {
+export interface FavoriteLegacy {
   cover: string;
   title: string;
   source_name: string;
@@ -51,7 +72,7 @@ export interface Favorite {
   save_time?: number;
 }
 
-export interface PlayRecord {
+export interface PlayRecordLegacy {
   title: string;
   source_name: string;
   cover: string;
@@ -63,12 +84,16 @@ export interface PlayRecord {
   year: string;
 }
 
-export interface ApiSite {
+export interface ApiSiteLegacy {
   key: string;
   api: string;
   name: string;
   detail?: string;
 }
+
+export type SearchResult = SearchResultLegacy;
+export type PlayRecord = PlayRecordLegacy;
+export type Favorite = FavoriteLegacy;
 
 export interface ServerConfig {
   SiteName: string;
@@ -76,7 +101,7 @@ export interface ServerConfig {
 }
 
 export class API {
-  public baseURL: string = "";
+  public baseURL: string = LOCAL_MODE_BASE_URL;
 
   constructor(baseURL?: string) {
     if (baseURL) {
@@ -88,152 +113,206 @@ export class API {
     this.baseURL = url;
   }
 
-  private async _fetch(url: string, options: RequestInit = {}): Promise<Response> {
-    if (!this.baseURL) {
-      throw new Error("API_URL_NOT_SET");
-    }
-
-    const response = await fetch(`${this.baseURL}${url}`, options);
-
-    if (response.status === 401) {
-      throw new Error("UNAUTHORIZED");
-    }
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return response;
-  }
-
+  /**
+   * 登录 (本地模式简化为配置验证)
+   */
   async login(username?: string | undefined, password?: string): Promise<{ ok: boolean }> {
-    const response = await this._fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-
-    // 存储cookie到AsyncStorage
-    const cookies = response.headers.get("Set-Cookie");
-    if (cookies) {
-      await AsyncStorage.setItem("authCookies", cookies);
-    }
-
-    return response.json();
+    // 本地模式无需真正的登录，直接返回成功
+    await AsyncStorage.setItem("authCookies", "local_mode");
+    return { ok: true };
   }
 
+  /**
+   * 登出
+   */
   async logout(): Promise<{ ok: boolean }> {
-    const response = await this._fetch("/api/logout", {
-      method: "POST",
-    });
-    await AsyncStorage.setItem("authCookies", '');
-    return response.json();
+    await AsyncStorage.removeItem("authCookies");
+    return { ok: true };
   }
 
+  /**
+   * 获取服务器配置
+   */
   async getServerConfig(): Promise<ServerConfig> {
-    const response = await this._fetch("/api/server-config");
-    return response.json();
+    const config = await lunaConfig.getConfig();
+    return {
+      SiteName: config.siteName,
+      StorageType: "localstorage",
+    };
   }
 
+  /**
+   * 获取收藏列表
+   */
   async getFavorites(key?: string): Promise<Record<string, Favorite> | Favorite | null> {
-    const url = key ? `/api/favorites?key=${encodeURIComponent(key)}` : "/api/favorites";
-    const response = await this._fetch(url);
-    return response.json();
+    if (key) {
+      const favorites = await favoritesStorage.getAll();
+      return favorites[key] || null;
+    }
+    return await favoritesStorage.getAll();
   }
 
+  /**
+   * 添加收藏
+   */
   async addFavorite(key: string, favorite: Omit<Favorite, "save_time">): Promise<{ success: boolean }> {
-    const response = await this._fetch("/api/favorites", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, favorite }),
-    });
-    return response.json();
+    await favoritesStorage.add(key, favorite as Favorite);
+    return { success: true };
   }
 
+  /**
+   * 删除收藏
+   */
   async deleteFavorite(key?: string): Promise<{ success: boolean }> {
-    const url = key ? `/api/favorites?key=${encodeURIComponent(key)}` : "/api/favorites";
-    const response = await this._fetch(url, { method: "DELETE" });
-    return response.json();
+    if (key) {
+      await favoritesStorage.remove(key);
+    } else {
+      await favoritesStorage.clear();
+    }
+    return { success: true };
   }
 
+  /**
+   * 获取播放记录
+   */
   async getPlayRecords(): Promise<Record<string, PlayRecord>> {
-    const response = await this._fetch("/api/playrecords");
-    return response.json();
+    return await playRecordsStorage.getAll();
   }
 
+  /**
+   * 保存播放记录
+   */
   async savePlayRecord(key: string, record: Omit<PlayRecord, "save_time">): Promise<{ success: boolean }> {
-    const response = await this._fetch("/api/playrecords", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, record }),
-    });
-    return response.json();
+    await playRecordsStorage.save(key, record as PlayRecord);
+    return { success: true };
   }
 
+  /**
+   * 删除播放记录
+   */
   async deletePlayRecord(key?: string): Promise<{ success: boolean }> {
-    const url = key ? `/api/playrecords?key=${encodeURIComponent(key)}` : "/api/playrecords";
-    const response = await this._fetch(url, { method: "DELETE" });
-    return response.json();
+    if (key) {
+      await playRecordsStorage.remove(key);
+    } else {
+      await playRecordsStorage.clear();
+    }
+    return { success: true };
   }
 
+  /**
+   * 获取搜索历史
+   */
   async getSearchHistory(): Promise<string[]> {
-    const response = await this._fetch("/api/searchhistory");
-    return response.json();
+    return await searchHistoryStorage.getAll();
   }
 
+  /**
+   * 添加搜索历史
+   */
   async addSearchHistory(keyword: string): Promise<string[]> {
-    const response = await this._fetch("/api/searchhistory", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keyword }),
-    });
-    return response.json();
+    await searchHistoryStorage.add(keyword);
+    return await searchHistoryStorage.getAll();
   }
 
+  /**
+   * 删除搜索历史
+   */
   async deleteSearchHistory(keyword?: string): Promise<{ success: boolean }> {
-    const url = keyword ? `/api/searchhistory?keyword=${keyword}` : "/api/searchhistory";
-    const response = await this._fetch(url, { method: "DELETE" });
-    return response.json();
+    if (keyword) {
+      await searchHistoryStorage.remove(keyword);
+    } else {
+      await searchHistoryStorage.clear();
+    }
+    return { success: true };
   }
 
+  /**
+   * 获取图片代理 URL
+   */
   getImageProxyUrl(imageUrl: string): string {
-    return `${this.baseURL}/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+    // 已经在 douban.ts 中处理了 CDN 代理，直接返回原 URL
+    return imageUrl;
   }
 
+  /**
+   * 获取豆瓣数据
+   */
   async getDoubanData(
     type: "movie" | "tv",
     tag: string,
     pageSize: number = 16,
     pageStart: number = 0
-  ): Promise<DoubanResponse> {
-    const url = `/api/douban?type=${type}&tag=${encodeURIComponent(tag)}&pageSize=${pageSize}&pageStart=${pageStart}`;
-    const response = await this._fetch(url);
-    return response.json();
+  ): Promise<DoubanResponseLegacy> {
+    return await lunaGetDoubanData(type, tag, pageSize, pageStart);
   }
 
-  async searchVideos(query: string): Promise<{ results: SearchResult[] }> {
-    const url = `/api/search?q=${encodeURIComponent(query)}`;
-    const response = await this._fetch(url);
-    return response.json();
+  /**
+   * 获取豆瓣分类数据
+   */
+  async getDoubanCategories(
+    kind: "movie" | "tv",
+    category?: string,
+    start: number = 0,
+    limit: number = 20
+  ): Promise<DoubanResponseLegacy> {
+    return await lunaGetDoubanCategories(kind, category, start, limit);
   }
 
-  async searchVideo(query: string, resourceId: string, signal?: AbortSignal): Promise<{ results: SearchResult[] }> {
-    const url = `/api/search/one?q=${encodeURIComponent(query)}&resourceId=${encodeURIComponent(resourceId)}`;
-    const response = await this._fetch(url, { signal });
-    const { results } = await response.json();
-    return { results: results.filter((item: any) => item.title === query )};
+  /**
+   * 获取豆瓣 Top250
+   */
+  async getDoubanTop250(
+    start: number = 0,
+    limit: number = 25
+  ): Promise<DoubanResponseLegacy> {
+    return await lunaGetDoubanTop250(start, limit);
   }
 
-  async getResources(signal?: AbortSignal): Promise<ApiSite[]> {
-    const url = `/api/search/resources`;
-    const response = await this._fetch(url, { signal });
-    return response.json();
+  /**
+   * 搜索视频
+   */
+  async searchVideos(query: string): Promise<{ results: SearchResultLegacy[] }> {
+    const results = await lunaSearchVideos(query);
+    return { results };
   }
 
-  async getVideoDetail(source: string, id: string): Promise<VideoDetail> {
-    const url = `/api/detail?source=${source}&id=${id}`;
-    const response = await this._fetch(url);
-    return response.json();
+  /**
+   * 从单个源搜索
+   */
+  async searchVideo(query: string, resourceId: string, signal?: AbortSignal): Promise<{ results: SearchResultLegacy[] }> {
+    const results = await searchFromSingleSource(resourceId, query);
+    return { results: filterMatchingResults(query, results) };
+  }
+
+  /**
+   * 获取资源列表
+   */
+  async getResources(signal?: AbortSignal): Promise<ApiSiteLegacy[]> {
+    return await lunaConfig.getApiSites();
+  }
+
+  /**
+   * 获取视频详情
+   */
+  async getVideoDetail(source: string, id: string): Promise<VideoDetailLegacy> {
+    const detail = await lunaGetVideoDetail(source, id);
+    if (!detail) {
+      throw new Error("Video not found");
+    }
+    return {
+      id: detail.id,
+      title: detail.title,
+      poster: detail.poster,
+      source: detail.source,
+      source_name: detail.source_name,
+      desc: detail.desc,
+      type: detail.type,
+      year: detail.year,
+      area: detail.area,
+      director: detail.director,
+      actor: detail.actor,
+      remarks: detail.remarks,
+    };
   }
 }
 

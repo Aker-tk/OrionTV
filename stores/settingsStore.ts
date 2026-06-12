@@ -3,6 +3,7 @@ import { SettingsManager } from "@/services/storage";
 import { api, ServerConfig } from "@/services/api";
 import { storageConfig } from "@/services/storageConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LOCAL_MODE_BASE_URL, normalizeApiBaseUrl } from "@/utils/localMode";
 import Logger from "@/utils/Logger";
 
 const logger = Logger.withTag('SettingsStore');
@@ -32,7 +33,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  apiBaseUrl: "",
+  apiBaseUrl: LOCAL_MODE_BASE_URL,
   m3uUrl: "",
   liveStreamSources: [],
   remoteInputEnabled: false,
@@ -54,10 +55,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         sources: {},
       },
     });
-    if (settings.apiBaseUrl) {
-      api.setBaseUrl(settings.apiBaseUrl);
-      await get().fetchServerConfig();
-    }
+    api.setBaseUrl(settings.apiBaseUrl || LOCAL_MODE_BASE_URL);
+    await get().fetchServerConfig();
   },
   fetchServerConfig: async () => {
     set({ isLoadingServerConfig: true });
@@ -82,24 +81,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const { apiBaseUrl, m3uUrl, remoteInputEnabled, videoSource } = get();
     const currentSettings = await SettingsManager.get()
     const currentApiBaseUrl = currentSettings.apiBaseUrl;
-    let processedApiBaseUrl = apiBaseUrl.trim();
-    if (processedApiBaseUrl.endsWith("/")) {
-      processedApiBaseUrl = processedApiBaseUrl.slice(0, -1);
-    }
-
-    if (!/^https?:\/\//i.test(processedApiBaseUrl)) {
-      const hostPart = processedApiBaseUrl.split("/")[0];
-      // Simple check for IP address format.
-      const isIpAddress = /^((\d{1,3}\.){3}\d{1,3})(:\d+)?$/.test(hostPart);
-      // Check if the domain includes a port.
-      const hasPort = /:\d+/.test(hostPart);
-
-      if (isIpAddress || hasPort) {
-        processedApiBaseUrl = "http://" + processedApiBaseUrl;
-      } else {
-        processedApiBaseUrl = "https://" + processedApiBaseUrl;
-      }
-    }
+    const processedApiBaseUrl = normalizeApiBaseUrl(apiBaseUrl);
 
     await SettingsManager.save({
       apiBaseUrl: processedApiBaseUrl,

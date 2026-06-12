@@ -511,7 +511,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       // 重新加载当前集数的episodes
       const newEpisodes = fallbackSource.episodes || [];
       if (newEpisodes.length > currentEpisodeIndex) {
-        const mappedEpisodes = newEpisodes.map((ep, index) => ({
+        const mappedEpisodes = newEpisodes.map((ep: string, index: number) => ({
           url: ep,
           title: `第 ${index + 1} 集`,
         }));

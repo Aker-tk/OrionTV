@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { SearchResult, api } from "@/services/api";
+import { api } from "@/services/api";
+import type { SearchResult } from "@/services/api";
 import { getResolutionFromM3U8 } from "@/services/m3u8";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { FavoriteManager } from "@/services/storage";

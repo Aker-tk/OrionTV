@@ -3,7 +3,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { Platform, View, StyleSheet } from "react-native";
+import { AppState, Platform, View, StyleSheet } from "react-native";
 import Toast from "react-native-toast-message";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -15,6 +15,8 @@ import { useUpdateStore, initUpdateStore } from "@/stores/updateStore";
 import { UpdateModal } from "@/components/UpdateModal";
 import { UPDATE_CONFIG } from "@/constants/UpdateConfig";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { LOCAL_MODE_BASE_URL } from "@/utils/localMode";
+import { initializeAndroidLifecycle, handleAndroidAppStateChange } from "@/services/androidLifecycleService";
 import Logger from '@/utils/Logger';
 
 const logger = Logger.withTag('RootLayout');
@@ -36,15 +38,14 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeApp = async () => {
       await loadSettings();
+      await initializeAndroidLifecycle();
     };
     initializeApp();
     initUpdateStore(); // 初始化更新存储
   }, [loadSettings]);
 
   useEffect(() => {
-    if (apiBaseUrl) {
-      checkLoginStatus(apiBaseUrl);
-    }
+    checkLoginStatus(apiBaseUrl || LOCAL_MODE_BASE_URL);
   }, [apiBaseUrl, checkLoginStatus]);
 
   useEffect(() => {
@@ -75,6 +76,11 @@ export default function RootLayout() {
       stopServer();
     }
   }, [remoteInputEnabled, startServer, stopServer, responsiveConfig.deviceType]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", handleAndroidAppStateChange);
+    return () => subscription.remove();
+  }, []);
 
   if (!loaded && !error) {
     return null;

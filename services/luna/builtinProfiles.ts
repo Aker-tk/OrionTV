@@ -1,0 +1,43 @@
+import { ApiSite, SourceProfile } from './types';
+
+export const BUILTIN_LUNA_PROFILE_ID = 'builtin-luna';
+export const BUILTIN_LUNA_PROFILE_NAME = 'LunaTV 默认源';
+
+export const DEFAULT_API_SITES: ApiSite[] = [
+  { key: 'iqiyizyapi_com', api: 'https://iqiyizyapi.com/api.php/provide/vod', name: '🎬-爱奇艺-', detail: 'https://iqiyizyapi.com' },
+  { key: 'mtzy_me', api: 'https://caiji.maotaizy.cc/api.php/provide/vod', name: '🎬茅台资源', detail: 'https://mtzy.me' },
+  { key: 'wolongzyw_com', api: 'https://wolongzyw.com/api.php/provide/vod', name: '🎬卧龙资源', detail: 'https://wolongzyw.com' },
+  { key: 'ikunzy_com', api: 'https://ikunzyapi.com/api.php/provide/vod', name: '🎬iKun资源', detail: 'https://ikunzy.com' },
+  { key: 'dyttzyapi_com', api: 'http://caiji.dyttzyapi.com/api.php/provide/vod', name: '🎬电影天堂', detail: 'http://caiji.dyttzyapi.com' },
+  { key: 'www_maoyanzy_com', api: 'https://api.maoyanapi.top/api.php/provide/vod', name: '🎬猫眼资源', detail: 'https://www.maoyanzy.com' },
+  { key: 'cj_lzcaiji_com', api: 'https://cj.lzcaiji.com/api.php/provide/vod', name: '🎬量子资源', detail: 'https://cj.lzcaiji.com' },
+  { key: '360zy_com', api: 'https://360zyzz.com/api.php/provide/vod', name: '🎬360 资源', detail: 'https://360zy.com' },
+  { key: 'jszyapi_com', api: 'https://jszyapi.com/api.php/provide/vod', name: '🎬极速资源', detail: 'https://jszyapi.com' },
+  { key: 'www_moduzy_net', api: 'https://www.mdzyapi.com/api.php/provide/vod', name: '🎬魔都资源', detail: 'https://www.moduzy.net' },
+  { key: 'ffzyapi_com', api: 'https://api.ffzyapi.com/api.php/provide/vod', name: '🎬非凡资源', detail: 'https://cj.ffzyapi.com' },
+  { key: 'bfzy_tv', api: 'https://bfzyapi.com/api.php/provide/vod', name: '🎬暴风资源', detail: 'https://bfzy.tv' },
+  { key: 'zuida_xyz', api: 'https://api.zuidapi.com/api.php/provide/vod', name: '🎬最大资源', detail: 'https://zuida.xyz' },
+  { key: 'wujinzy_me', api: 'https://api.wujinapi.me/api.php/provide/vod', name: '🎬无尽资源', detail: 'https://wujinzy.com' },
+  { key: 'xinlangapi_com', api: 'https://api.xinlangapi.com/xinlangapi.php/provide/vod', name: '🎬新浪资源', detail: 'https://xinlangapi.com' },
+  { key: 'api_wwzy_tv', api: 'https://api.wwzy.tv/api.php/provide/vod', name: '🎬旺旺资源', detail: 'https://api.wwzy.tv' },
+  { key: 'www_subozy_com', api: 'https://subocaiji.com/api.php/provide/vod', name: '🎬速播资源', detail: 'https://www.subozy.com' },
+  { key: 'jinyingzy_com', api: 'https://jinyingzy.com/api.php/provide/vod', name: '🎬金鹰点播', detail: 'https://jinyingzy.com' },
+  { key: 'p2100_net', api: 'https://p2100.net/api.php/provide/vod', name: '🎬飘零资源', detail: 'https://p2100.net' },
+  { key: 'api_ukuapi88_com', api: 'https://api.ukuapi88.com/api.php/provide/vod', name: '🎬U酷影视', detail: 'https://www.ukuzy.com' },
+  { key: 'api_guangsuapi_com', api: 'https://api.guangsuapi.com/api.php/provide/vod', name: '🎬光速资源', detail: 'https://api.guangsuapi.com' },
+  { key: 'www_hongniuzy_com', api: 'https://www.hongniuzy2.com/api.php/provide/vod', name: '🎬红牛资源', detail: 'https://www.hongniuzy.com' },
+  { key: 'caiji_moduapi_cc', api: 'https://caiji.moduapi.cc/api.php/provide/vod', name: '🎬魔都动漫', detail: 'https://caiji.moduapi.cc' },
+  { key: 'www_ryzyw_com', api: 'https://pz.v88.qzz.io/?url=https://cj.rycjapi.com/api.php/provide/vod', name: '🎬如意资源', detail: 'https://www.ryzyw.com' },
+  { key: 'www_haohuazy_com', api: 'https://pz.v88.qzz.io/?url=https://hhzyapi.com/api.php/provide/vod', name: '🎬豪华资源', detail: 'https://www.haohuazy.com' },
+  { key: 'bdzy1_com', api: 'https://pz.v88.qzz.io/?url=https://api.apibdzy.com/api.php/provide/vod', name: '🎬百度云zy', detail: 'https://bdzy1.com' },
+  { key: 'lovedan_net', api: 'https://pz.v88.qzz.io/?url=https://lovedan.net/api.php/provide/vod', name: '🎬艾旦影视', detail: 'https://lovedan.net' },
+];
+
+export const BUILTIN_SOURCE_PROFILES: SourceProfile[] = [
+  {
+    id: BUILTIN_LUNA_PROFILE_ID,
+    name: BUILTIN_LUNA_PROFILE_NAME,
+    type: 'builtin',
+    sites: DEFAULT_API_SITES,
+  },
+];

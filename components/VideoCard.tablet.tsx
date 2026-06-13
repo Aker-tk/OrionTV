@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, forwardRef } from "react";
+import React, { memo, useState, useCallback, useRef, forwardRef } from "react";
 import { View, Text, Image, StyleSheet, TouchableOpacity, Alert, Animated } from "react-native";
 import { useRouter } from "expo-router";
 import { Star, Play } from "lucide-react-native";
@@ -6,9 +6,8 @@ import { PlayRecordManager } from "@/services/storage";
 import { API } from "@/services/api";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors } from "@/constants/Colors";
-import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { DeviceType } from "@/hooks/useResponsiveLayout";
 import { buildImageSource } from "@/services/imageSource";
-import { DeviceUtils } from "@/utils/DeviceUtils";
 import Logger from '@/utils/Logger';
 
 const logger = Logger.withTag('VideoCardTablet');
@@ -28,6 +27,10 @@ interface VideoCardTabletProps extends React.ComponentProps<typeof TouchableOpac
   onFocus?: () => void;
   onRecordDeleted?: () => void;
   api: API;
+  deviceType?: DeviceType;
+  cardWidth?: number;
+  cardHeight?: number;
+  spacing?: number;
 }
 
 const VideoCardTablet = forwardRef<View, VideoCardTabletProps>(
@@ -45,13 +48,16 @@ const VideoCardTablet = forwardRef<View, VideoCardTabletProps>(
       onFocus,
       onRecordDeleted,
       api,
+      deviceType = 'tablet',
+      cardWidth: layoutWidth,
+      cardHeight: layoutHeight,
+      spacing: layoutSpacing,
       playTime = 0,
     }: VideoCardTabletProps,
     ref
   ) => {
     const router = useRouter();
-    const { cardWidth, cardHeight, spacing } = useResponsiveLayout();
-    const [fadeAnim] = useState(new Animated.Value(0));
+    const { cardWidth = 160, cardHeight = 240, spacing = 12 } = { cardWidth: layoutWidth, cardHeight: layoutHeight, spacing: layoutSpacing };
     const [isPressed, setIsPressed] = useState(false);
 
     const longPressTriggered = useRef(false);
@@ -96,15 +102,6 @@ const VideoCardTablet = forwardRef<View, VideoCardTabletProps>(
       }).start();
     }, [scale]);
 
-    useEffect(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: DeviceUtils.getAnimationDuration(400),
-        delay: Math.random() * 150,
-        useNativeDriver: true,
-      }).start();
-    }, [fadeAnim]);
-
     const handleLongPress = () => {
       if (progress === undefined) return;
 
@@ -140,7 +137,7 @@ const VideoCardTablet = forwardRef<View, VideoCardTabletProps>(
     const styles = createTabletStyles(cardWidth, cardHeight, spacing);
 
     return (
-      <Animated.View style={[styles.wrapper, animatedStyle, { opacity: fadeAnim }]} ref={ref}>
+      <Animated.View style={[styles.wrapper, animatedStyle]} ref={ref}>
         <TouchableOpacity
           onPress={handlePress}
           onPressIn={handlePressIn}
@@ -335,4 +332,4 @@ const createTabletStyles = (cardWidth: number, cardHeight: number, spacing: numb
   });
 };
 
-export default VideoCardTablet;
+export default memo(VideoCardTablet);

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { TouchableOpacity } from 'react-native';
-import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { DeviceType, useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { API } from '@/services/api';
 
 // 导入不同平台的VideoCard组件
@@ -23,14 +23,18 @@ interface VideoCardProps extends React.ComponentProps<typeof TouchableOpacity> {
   onFocus?: () => void;
   onRecordDeleted?: () => void;
   api: API;
+  deviceType?: DeviceType;
+  cardWidth?: number;
+  cardHeight?: number;
+  spacing?: number;
 }
 
 /**
  * 响应式VideoCard组件
  * 根据设备类型自动选择合适的VideoCard实现
  */
-const VideoCard = React.forwardRef<any, VideoCardProps>((props, ref) => {
-  const { deviceType } = useResponsiveLayout();
+const renderPlatformCard = (props: VideoCardProps, ref: React.ForwardedRef<any>) => {
+  const { deviceType = 'tv' } = props;
 
   switch (deviceType) {
     case 'mobile':
@@ -43,8 +47,23 @@ const VideoCard = React.forwardRef<any, VideoCardProps>((props, ref) => {
     default:
       return <VideoCardTV {...props} ref={ref} />;
   }
+};
+
+const VideoCardWithResponsiveLayout = React.forwardRef<any, VideoCardProps>((props, ref) => {
+  const layout = useResponsiveLayout();
+  return renderPlatformCard({ ...props, ...layout }, ref);
+});
+
+VideoCardWithResponsiveLayout.displayName = 'VideoCardWithResponsiveLayout';
+
+const VideoCard = React.forwardRef<any, VideoCardProps>((props, ref) => {
+  if (props.deviceType && props.cardWidth && props.cardHeight && props.spacing !== undefined) {
+    return renderPlatformCard(props, ref);
+  }
+
+  return <VideoCardWithResponsiveLayout {...props} ref={ref} />;
 });
 
 VideoCard.displayName = 'VideoCard';
 
-export default VideoCard;
+export default memo(VideoCard);

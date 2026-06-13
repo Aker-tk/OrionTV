@@ -85,17 +85,17 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
 
   loadVideo: async ({ source, id, episodeIndex, position, title }) => {
     const perfStart = performance.now();
-    logger.info(`[PERF] PlayerStore.loadVideo START - source: ${source}, id: ${id}, title: ${title}`);
+    logger.debug(`[PERF] PlayerStore.loadVideo START - source: ${source}, id: ${id}, title: ${title}`);
     
     let detail = useDetailStore.getState().detail;
     let episodes: string[] = [];
     
     // 如果有detail，使用detail的source获取episodes；否则使用传入的source
     if (detail && detail.source) {
-      logger.info(`[INFO] Using existing detail source "${detail.source}" to get episodes`);
+      logger.debug(`[INFO] Using existing detail source "${detail.source}" to get episodes`);
       episodes = episodesSelectorBySource(detail.source)(useDetailStore.getState());
     } else {
-      logger.info(`[INFO] No existing detail, using provided source "${source}" to get episodes`);
+      logger.debug(`[INFO] No existing detail, using provided source "${source}" to get episodes`);
       episodes = episodesSelectorBySource(source)(useDetailStore.getState());
     }
 
@@ -104,16 +104,16 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
     });
 
     const needsDetailInit = !detail || !episodes || episodes.length === 0 || detail.title !== title;
-    logger.info(`[PERF] Detail check - needsInit: ${needsDetailInit}, hasDetail: ${!!detail}, episodesCount: ${episodes?.length || 0}`);
+    logger.debug(`[PERF] Detail check - needsInit: ${needsDetailInit}, hasDetail: ${!!detail}, episodesCount: ${episodes?.length || 0}`);
 
     if (needsDetailInit) {
       const detailInitStart = performance.now();
-      logger.info(`[PERF] DetailStore.init START - ${title}`);
+      logger.debug(`[PERF] DetailStore.init START - ${title}`);
       
       await useDetailStore.getState().init(title, source, id);
       
       const detailInitEnd = performance.now();
-      logger.info(`[PERF] DetailStore.init END - took ${(detailInitEnd - detailInitStart).toFixed(2)}ms`);
+      logger.debug(`[PERF] DetailStore.init END - took ${(detailInitEnd - detailInitStart).toFixed(2)}ms`);
       
       detail = useDetailStore.getState().detail;
       
@@ -136,7 +136,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       }
       
       // 使用DetailStore找到的实际source来获取episodes，而不是原始的preferredSource
-      logger.info(`[INFO] Using actual source "${detail.source}" instead of preferred source "${source}"`);  
+      logger.debug(`[INFO] Using actual source "${detail.source}" instead of preferred source "${source}"`);  
       episodes = episodesSelectorBySource(detail.source)(useDetailStore.getState());
       
       if (!episodes || episodes.length === 0) {
@@ -144,12 +144,12 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
         
         // 尝试从searchResults中直接获取episodes
         const detailStoreState = useDetailStore.getState();
-        logger.info(`[INFO] Available sources in searchResults: ${detailStoreState.searchResults.map(r => `${r.source}(${r.episodes?.length || 0} episodes)`).join(', ')}`);
+        logger.debug(`[INFO] Available sources in searchResults: ${detailStoreState.searchResults.map(r => `${r.source}(${r.episodes?.length || 0} episodes)`).join(', ')}`);
         
         // 如果当前source没有episodes，尝试使用第一个有episodes的source
         const sourceWithEpisodes = detailStoreState.searchResults.find(r => r.episodes && r.episodes.length > 0);
         if (sourceWithEpisodes) {
-          logger.info(`[FALLBACK] Using alternative source "${sourceWithEpisodes.source}" with ${sourceWithEpisodes.episodes.length} episodes`);
+          logger.debug(`[FALLBACK] Using alternative source "${sourceWithEpisodes.source}" with ${sourceWithEpisodes.episodes.length} episodes`);
           episodes = sourceWithEpisodes.episodes;
           // 更新detail为有episodes的source
           detail = sourceWithEpisodes;
@@ -160,13 +160,13 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
         }
       }
       
-      logger.info(`[SUCCESS] Detail and episodes loaded - source: ${detail.source_name}, episodes: ${episodes.length}`);
+      logger.debug(`[SUCCESS] Detail and episodes loaded - source: ${detail.source_name}, episodes: ${episodes.length}`);
     } else {
-      logger.info(`[PERF] Skipping DetailStore.init - using cached data`);
+      logger.debug(`[PERF] Skipping DetailStore.init - using cached data`);
       
       // 即使是缓存的数据，也要确保使用正确的source获取episodes
       if (detail && detail.source && detail.source !== source) {
-        logger.info(`[INFO] Cached detail source "${detail.source}" differs from provided source "${source}", updating episodes`);
+        logger.debug(`[INFO] Cached detail source "${detail.source}" differs from provided source "${source}", updating episodes`);
         episodes = episodesSelectorBySource(detail.source)(useDetailStore.getState());
         
         if (!episodes || episodes.length === 0) {
@@ -189,20 +189,20 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
     
-    logger.info(`[SUCCESS] Final validation passed - detail: ${detail.source_name}, episodes: ${episodes.length}`);
+    logger.debug(`[SUCCESS] Final validation passed - detail: ${detail.source_name}, episodes: ${episodes.length}`);
 
     try {
       const storageStart = performance.now();
-      logger.info(`[PERF] Storage operations START`);
+      logger.debug(`[PERF] Storage operations START`);
       
       const playRecord = await PlayRecordManager.get(detail!.source, detail!.id.toString());
       const storagePlayRecordEnd = performance.now();
-      logger.info(`[PERF] PlayRecordManager.get took ${(storagePlayRecordEnd - storageStart).toFixed(2)}ms`);
+      logger.debug(`[PERF] PlayRecordManager.get took ${(storagePlayRecordEnd - storageStart).toFixed(2)}ms`);
       
       const playerSettings = await PlayerSettingsManager.get(detail!.source, detail!.id.toString());
       const storageEnd = performance.now();
-      logger.info(`[PERF] PlayerSettingsManager.get took ${(storageEnd - storagePlayRecordEnd).toFixed(2)}ms`);
-      logger.info(`[PERF] Total storage operations took ${(storageEnd - storageStart).toFixed(2)}ms`);
+      logger.debug(`[PERF] PlayerSettingsManager.get took ${(storageEnd - storagePlayRecordEnd).toFixed(2)}ms`);
+      logger.debug(`[PERF] Total storage operations took ${(storageEnd - storageStart).toFixed(2)}ms`);
       
       const initialPositionFromRecord = playRecord?.play_time ? playRecord.play_time * 1000 : 0;
       const savedPlaybackRate = playerSettings?.playbackRate || 1.0;
@@ -213,7 +213,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
         title: `第 ${index + 1} 集`,
       }));
       const episodesMappingEnd = performance.now();
-      logger.info(`[PERF] Episodes mapping (${episodes.length} episodes) took ${(episodesMappingEnd - episodesMappingStart).toFixed(2)}ms`);
+      logger.debug(`[PERF] Episodes mapping (${episodes.length} episodes) took ${(episodesMappingEnd - episodesMappingStart).toFixed(2)}ms`);
       
       set({
         isLoading: false,
@@ -226,14 +226,14 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       });
       
       const perfEnd = performance.now();
-      logger.info(`[PERF] PlayerStore.loadVideo COMPLETE - total time: ${(perfEnd - perfStart).toFixed(2)}ms`);
+      logger.debug(`[PERF] PlayerStore.loadVideo COMPLETE - total time: ${(perfEnd - perfStart).toFixed(2)}ms`);
       
     } catch (error) {
       logger.debug("Failed to load play record", error);
       set({ isLoading: false });
       
       const perfEnd = performance.now();
-      logger.info(`[PERF] PlayerStore.loadVideo ERROR - total time: ${(perfEnd - perfStart).toFixed(2)}ms`);
+      logger.debug(`[PERF] PlayerStore.loadVideo ERROR - total time: ${(perfEnd - perfStart).toFixed(2)}ms`);
     }
   },
 
@@ -392,7 +392,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
 
-    const { currentEpisodeIndex, episodes, outroStartTime, playEpisode } = get();
+    const { currentEpisodeIndex, episodes, outroStartTime, playEpisode, status: prevStatus, progressPosition: prevProgress } = get();
     const detail = useDetailStore.getState().detail;
 
     if (
@@ -402,7 +402,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
     ) {
       if (currentEpisodeIndex < episodes.length - 1) {
         playEpisode(currentEpisodeIndex + 1);
-        return; // Stop further processing for this update
+        return;
       }
     }
 
@@ -423,8 +423,16 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       }
     }
 
-    const progressPosition = newStatus.durationMillis ? newStatus.positionMillis / newStatus.durationMillis : 0;
-    set({ status: newStatus, progressPosition });
+    const newProgress = newStatus.durationMillis ? newStatus.positionMillis / newStatus.durationMillis : 0;
+    const progressDelta = Math.abs(newProgress - prevProgress);
+    const secondChanged = !prevStatus?.isLoaded ||
+      Math.floor((prevStatus.positionMillis || 0) / 1000) !== Math.floor((newStatus.positionMillis || 0) / 1000);
+    const playbackStateChanged = !prevStatus?.isLoaded ||
+      prevStatus.isPlaying !== newStatus.isPlaying;
+
+    if (progressDelta > 0.002 || secondChanged || playbackStateChanged) {
+      set({ status: newStatus, progressPosition: newProgress });
+    }
   },
 
   setLoading: (loading) => set({ isLoading: loading }),
@@ -502,7 +510,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
     
-    logger.info(`[VIDEO_ERROR] Switching to fallback source: ${fallbackSource.source} (${fallbackSource.source_name})`);
+    logger.debug(`[VIDEO_ERROR] Switching to fallback source: ${fallbackSource.source} (${fallbackSource.source_name})`);
     
     try {
       // 更新DetailStore的当前detail为fallback source
@@ -522,8 +530,8 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
         });
         
         const perfEnd = performance.now();
-        logger.info(`[VIDEO_ERROR] Successfully switched to fallback source in ${(perfEnd - perfStart).toFixed(2)}ms`);
-        logger.info(`[VIDEO_ERROR] New episode URL: ${newEpisodes[currentEpisodeIndex].substring(0, 100)}...`);
+        logger.debug(`[VIDEO_ERROR] Successfully switched to fallback source in ${(perfEnd - perfStart).toFixed(2)}ms`);
+        logger.debug(`[VIDEO_ERROR] New episode URL: ${newEpisodes[currentEpisodeIndex].substring(0, 100)}...`);
         
         Toast.show({ 
           type: "success", 

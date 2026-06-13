@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, forwardRef } from "react";
+import React, { memo, useState, useCallback, useRef, forwardRef } from "react";
 import { View, Text, Image, StyleSheet, Pressable, TouchableOpacity, Alert, Animated, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { Star, Play } from "lucide-react-native";
@@ -7,7 +7,7 @@ import { API } from "@/services/api";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors } from "@/constants/Colors";
 import Logger from '@/utils/Logger';
-import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { DeviceType } from "@/hooks/useResponsiveLayout";
 import { buildImageSource } from "@/services/imageSource";
 
 const logger = Logger.withTag('VideoCardTV');
@@ -27,6 +27,7 @@ interface VideoCardProps extends React.ComponentProps<typeof TouchableOpacity> {
   onFocus?: () => void;
   onRecordDeleted?: () => void; // 添加回调属性
   api: API;
+  deviceType?: DeviceType;
 }
 
 const VideoCard = forwardRef<View, VideoCardProps>(
@@ -44,19 +45,17 @@ const VideoCard = forwardRef<View, VideoCardProps>(
       onFocus,
       onRecordDeleted,
       api,
+      deviceType = 'tv',
       playTime = 0,
     }: VideoCardProps,
     ref
   ) => {
     const router = useRouter();
     const [isFocused, setIsFocused] = useState(false);
-    const [fadeAnim] = useState(new Animated.Value(0));
 
     const longPressTriggered = useRef(false);
 
     const scale = useRef(new Animated.Value(1)).current;
-
-    const deviceType = useResponsiveLayout().deviceType;
 
     const animatedStyle = {
       transform: [{ scale }],
@@ -100,15 +99,6 @@ const VideoCard = forwardRef<View, VideoCardProps>(
       }).start();
     }, [scale]);
 
-    useEffect(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        delay: Math.random() * 200, // 随机延迟创造交错效果
-        useNativeDriver: true,
-      }).start();
-    }, [fadeAnim]);
-
     const handleLongPress = () => {
       // Only allow long press for items with progress (play records)
       if (progress === undefined) return;
@@ -150,7 +140,7 @@ const VideoCard = forwardRef<View, VideoCardProps>(
     const isContinueWatching = progress !== undefined && progress > 0 && progress < 1;
 
     return (
-      <Animated.View style={[styles.wrapper, animatedStyle, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.wrapper, animatedStyle]}>
         <Pressable
           android_ripple={Platform.isTV || deviceType !== 'tv' ? { color: 'transparent' } : { color: Colors.dark.link }}
           onPress={handlePress}
@@ -221,7 +211,7 @@ const VideoCard = forwardRef<View, VideoCardProps>(
 
 VideoCard.displayName = "VideoCard";
 
-export default VideoCard;
+export default memo(VideoCard);
 
 const CARD_WIDTH = 160;
 const CARD_HEIGHT = 240;

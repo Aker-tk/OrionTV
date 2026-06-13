@@ -6,7 +6,11 @@ import usePlayerStore from "@/stores/playerStore";
 interface EpisodeSelectionModalProps {}
 
 export const EpisodeSelectionModal: React.FC<EpisodeSelectionModalProps> = () => {
-  const { showEpisodeModal, episodes, currentEpisodeIndex, playEpisode, setShowEpisodeModal } = usePlayerStore();
+  const showEpisodeModal = usePlayerStore((state) => state.showEpisodeModal);
+  const episodes = usePlayerStore((state) => state.episodes);
+  const currentEpisodeIndex = usePlayerStore((state) => state.currentEpisodeIndex);
+  const playEpisode = usePlayerStore((state) => state.playEpisode);
+  const setShowEpisodeModal = usePlayerStore((state) => state.setShowEpisodeModal);
 
   const [episodeGroupSize] = useState(30);
   const [selectedEpisodeGroup, setSelectedEpisodeGroup] = useState(Math.floor(currentEpisodeIndex / episodeGroupSize));

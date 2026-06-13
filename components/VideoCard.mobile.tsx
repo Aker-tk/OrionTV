@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef, forwardRef } from "react";
-import { View, Text, Image, StyleSheet, TouchableOpacity, Alert, Animated } from "react-native";
+import React, { memo, useRef, forwardRef } from "react";
+import { View, Text, Image, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { Star, Play } from "lucide-react-native";
 import { PlayRecordManager } from "@/services/storage";
 import { API } from "@/services/api";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors } from "@/constants/Colors";
-import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { DeviceType } from "@/hooks/useResponsiveLayout";
 import { buildImageSource } from "@/services/imageSource";
-import { DeviceUtils } from "@/utils/DeviceUtils";
 import Logger from '@/utils/Logger';
 
 const logger = Logger.withTag('VideoCardMobile');
@@ -28,6 +27,10 @@ interface VideoCardMobileProps extends React.ComponentProps<typeof TouchableOpac
   onFocus?: () => void;
   onRecordDeleted?: () => void;
   api: API;
+  deviceType?: DeviceType;
+  cardWidth?: number;
+  cardHeight?: number;
+  spacing?: number;
 }
 
 const VideoCardMobile = forwardRef<View, VideoCardMobileProps>(
@@ -45,13 +48,16 @@ const VideoCardMobile = forwardRef<View, VideoCardMobileProps>(
       onFocus,
       onRecordDeleted,
       api,
+      deviceType = 'mobile',
+      cardWidth: layoutWidth,
+      cardHeight: layoutHeight,
+      spacing: layoutSpacing,
       playTime = 0,
     }: VideoCardMobileProps,
     ref
   ) => {
     const router = useRouter();
-    const { cardWidth, cardHeight, spacing } = useResponsiveLayout();
-    const [fadeAnim] = useState(new Animated.Value(0));
+    const { cardWidth = 120, cardHeight = 180, spacing = 8 } = { cardWidth: layoutWidth, cardHeight: layoutHeight, spacing: layoutSpacing };
 
     const longPressTriggered = useRef(false);
 
@@ -73,15 +79,6 @@ const VideoCardMobile = forwardRef<View, VideoCardMobileProps>(
         });
       }
     };
-
-    useEffect(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: DeviceUtils.getAnimationDuration(300),
-        delay: Math.random() * 100,
-        useNativeDriver: true,
-      }).start();
-    }, [fadeAnim]);
 
     const handleLongPress = () => {
       if (progress === undefined) return;
@@ -114,7 +111,7 @@ const VideoCardMobile = forwardRef<View, VideoCardMobileProps>(
     const styles = createMobileStyles(cardWidth, cardHeight, spacing);
 
     return (
-      <Animated.View style={[styles.wrapper, { opacity: fadeAnim }]} ref={ref}>
+      <View style={styles.wrapper} ref={ref}>
         <TouchableOpacity
           onPress={handlePress}
           onLongPress={handleLongPress}
@@ -172,7 +169,7 @@ const VideoCardMobile = forwardRef<View, VideoCardMobileProps>(
             )}
           </View>
         </TouchableOpacity>
-      </Animated.View>
+      </View>
     );
   }
 );
@@ -286,4 +283,4 @@ const createMobileStyles = (cardWidth: number, cardHeight: number, spacing: numb
   });
 };
 
-export default VideoCardMobile;
+export default memo(VideoCardMobile);

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef, useState } from "react";
+import React, { useEffect, useCallback, useRef, useState, useMemo } from "react";
 import { View, StyleSheet, ActivityIndicator, FlatList, Pressable, Animated, StatusBar, Platform, BackHandler, ToastAndroid } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedView } from "@/components/ThemedView";
@@ -137,10 +137,10 @@ export default function HomeScreen() {
     }
   }, [loading, contentData.length, fadeAnim]);
 
-  const handleCategorySelect = (category: Category) => {
+  const handleCategorySelect = useCallback((category: Category) => {
     setSelectedTag(null);
     selectCategory(category);
-  };
+  }, [selectCategory]);
 
   const handleTagSelect = (tag: string) => {
     setSelectedTag(tag);
@@ -150,7 +150,54 @@ export default function HomeScreen() {
     }
   };
 
-  const renderCategory = ({ item }: { item: Category }) => {
+  // 动态样式
+  const dynamicStyles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      paddingTop: deviceType === "mobile" ? insets.top : deviceType === "tablet" ? insets.top + 20 : 40,
+    },
+    headerContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: spacing * 1.5,
+      marginBottom: spacing,
+    },
+    headerTitle: {
+      fontSize: deviceType === "mobile" ? 24 : deviceType === "tablet" ? 28 : 32,
+      fontWeight: "bold",
+      paddingTop: 16,
+    },
+    rightHeaderButtons: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    iconButton: {
+      borderRadius: 30,
+      marginLeft: spacing / 2,
+    },
+    categoryContainer: {
+      paddingBottom: spacing / 2,
+    },
+    categoryListContent: {
+      paddingHorizontal: spacing,
+    },
+    categoryButton: {
+      paddingHorizontal: deviceType === "tv" ? spacing / 4 : spacing / 2,
+      paddingVertical: spacing / 2,
+      borderRadius: deviceType === "mobile" ? 6 : 8,
+      marginHorizontal: deviceType === "tv" ? spacing / 4 : spacing / 2,
+    },
+    categoryText: {
+      fontSize: deviceType === "mobile" ? 14 : 16,
+      fontWeight: "500",
+    },
+    contentContainer: {
+      flex: 1,
+    },
+  }), [deviceType, spacing, insets.top]);
+
+  const renderCategory = useCallback(({ item }: { item: Category }) => {
     const isSelected = selectedCategory?.title === item.title;
     return (
       <StyledButton
@@ -161,9 +208,9 @@ export default function HomeScreen() {
         textStyle={dynamicStyles.categoryText}
       />
     );
-  };
+  }, [selectedCategory?.title, handleCategorySelect, dynamicStyles.categoryButton, dynamicStyles.categoryText]);
 
-  const renderContentItem = ({ item }: { item: RowItem; index: number }) => (
+  const renderContentItem = useCallback(({ item }: { item: RowItem; index: number }) => (
     <VideoCard
       id={item.id}
       source={item.source}
@@ -178,13 +225,17 @@ export default function HomeScreen() {
       totalEpisodes={item.totalEpisodes}
       api={api}
       onRecordDeleted={fetchInitialData}
+      deviceType={deviceType}
+      cardWidth={responsiveConfig.cardWidth}
+      cardHeight={responsiveConfig.cardHeight}
+      spacing={responsiveConfig.spacing}
     />
-  );
+  ), [deviceType, responsiveConfig, fetchInitialData]);
 
-  const renderFooter = () => {
+  const renderFooter = useCallback(() => {
     if (!loadingMore) return null;
     return <ActivityIndicator style={{ marginVertical: 20 }} size="large" />;
-  };
+  }, [loadingMore]);
 
   // 检查是否需要显示API配置提示
   const shouldShowApiConfig = !apiConfigStatus.isLocalMode && apiConfigStatus.needsConfiguration && selectedCategory && !selectedCategory.tags;
@@ -232,53 +283,6 @@ export default function HomeScreen() {
       </View>
     );
   };
-
-  // 动态样式
-  const dynamicStyles = StyleSheet.create({
-    container: {
-      flex: 1,
-      paddingTop: deviceType === "mobile" ? insets.top : deviceType === "tablet" ? insets.top + 20 : 40,
-    },
-    headerContainer: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: spacing * 1.5,
-      marginBottom: spacing,
-    },
-    headerTitle: {
-      fontSize: deviceType === "mobile" ? 24 : deviceType === "tablet" ? 28 : 32,
-      fontWeight: "bold",
-      paddingTop: 16,
-    },
-    rightHeaderButtons: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    iconButton: {
-      borderRadius: 30,
-      marginLeft: spacing / 2,
-    },
-    categoryContainer: {
-      paddingBottom: spacing / 2,
-    },
-    categoryListContent: {
-      paddingHorizontal: spacing,
-    },
-    categoryButton: {
-      paddingHorizontal: deviceType === "tv" ? spacing / 4 : spacing / 2,
-      paddingVertical: spacing / 2,
-      borderRadius: deviceType === "mobile" ? 6 : 8,
-      marginHorizontal: deviceType === "tv" ? spacing / 4 : spacing / 2, // TV端使用更小的间距
-    },
-    categoryText: {
-      fontSize: deviceType === "mobile" ? 14 : 16,
-      fontWeight: "500",
-    },
-    contentContainer: {
-      flex: 1,
-    },
-  });
 
   const content = (
     <ThemedView style={[commonStyles.container, dynamicStyles.container]}>

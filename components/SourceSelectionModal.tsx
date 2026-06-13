@@ -8,7 +8,11 @@ import Logger from '@/utils/Logger';
 const logger = Logger.withTag('SourceSelectionModal');
 
 export const SourceSelectionModal: React.FC = () => {
-  const { showSourceModal, setShowSourceModal, loadVideo, currentEpisodeIndex, status } = usePlayerStore();
+  const showSourceModal = usePlayerStore((state) => state.showSourceModal);
+  const loadVideo = usePlayerStore((state) => state.loadVideo);
+  const currentEpisodeIndex = usePlayerStore((state) => state.currentEpisodeIndex);
+  const status = usePlayerStore((state) => state.status);
+  const setShowSourceModal = usePlayerStore((state) => state.setShowSourceModal);
   const { searchResults, detail, setDetail } = useDetailStore();
 
   const onSelectSource = (index: number) => {

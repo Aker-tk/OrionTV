@@ -19,7 +19,10 @@ const SPEED_OPTIONS: SpeedOption[] = [
 ];
 
 export const SpeedSelectionModal: React.FC = () => {
-  const { showSpeedModal, setShowSpeedModal, playbackRate, setPlaybackRate } = usePlayerStore();
+  const showSpeedModal = usePlayerStore((state) => state.showSpeedModal);
+  const playbackRate = usePlayerStore((state) => state.playbackRate);
+  const setPlaybackRate = usePlayerStore((state) => state.setPlaybackRate);
+  const setShowSpeedModal = usePlayerStore((state) => state.setShowSpeedModal);
 
   const onSelectSpeed = (rate: number) => {
     setPlaybackRate(rate);

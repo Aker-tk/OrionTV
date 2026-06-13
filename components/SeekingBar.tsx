@@ -20,7 +20,9 @@ const formatTime = (milliseconds: number) => {
 };
 
 export const SeekingBar = () => {
-  const { isSeeking, seekPosition, status } = usePlayerStore();
+  const isSeeking = usePlayerStore((state) => state.isSeeking);
+  const seekPosition = usePlayerStore((state) => state.seekPosition);
+  const status = usePlayerStore((state) => state.status);
 
   if (!isSeeking || !status?.isLoaded) {
     return null;

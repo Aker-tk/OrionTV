@@ -14,24 +14,22 @@ interface PlayerControlsProps {
 }
 
 export const PlayerControls: React.FC<PlayerControlsProps> = ({ showControls, setShowControls }) => {
-  const {
-    currentEpisodeIndex,
-    episodes,
-    status,
-    isSeeking,
-    seekPosition,
-    progressPosition,
-    playbackRate,
-    togglePlayPause,
-    playEpisode,
-    setShowEpisodeModal,
-    setShowSourceModal,
-    setShowSpeedModal,
-    setIntroEndTime,
-    setOutroStartTime,
-    introEndTime,
-    outroStartTime,
-  } = usePlayerStore();
+  const currentEpisodeIndex = usePlayerStore((state) => state.currentEpisodeIndex);
+  const episodes = usePlayerStore((state) => state.episodes);
+  const status = usePlayerStore((state) => state.status);
+  const isSeeking = usePlayerStore((state) => state.isSeeking);
+  const seekPosition = usePlayerStore((state) => state.seekPosition);
+  const progressPosition = usePlayerStore((state) => state.progressPosition);
+  const playbackRate = usePlayerStore((state) => state.playbackRate);
+  const introEndTime = usePlayerStore((state) => state.introEndTime);
+  const outroStartTime = usePlayerStore((state) => state.outroStartTime);
+  const togglePlayPause = usePlayerStore((state) => state.togglePlayPause);
+  const playEpisode = usePlayerStore((state) => state.playEpisode);
+  const setShowEpisodeModal = usePlayerStore((state) => state.setShowEpisodeModal);
+  const setShowSourceModal = usePlayerStore((state) => state.setShowSourceModal);
+  const setShowSpeedModal = usePlayerStore((state) => state.setShowSpeedModal);
+  const setIntroEndTime = usePlayerStore((state) => state.setIntroEndTime);
+  const setOutroStartTime = usePlayerStore((state) => state.setOutroStartTime);
 
   const { detail } = useDetailStore();
   const resources = useSources();

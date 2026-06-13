@@ -31,6 +31,16 @@ export const useApiConfig = () => {
     }
 
     const validateConfig = async () => {
+      // Skip API call if server config already loaded by settingsStore
+      if (serverConfig) {
+        setValidationState({
+          isValidating: false,
+          isValid: true,
+          error: null,
+        });
+        return;
+      }
+
       setValidationState(prev => ({ ...prev, isValidating: true, error: null }));
 
       try {
@@ -77,7 +87,7 @@ export const useApiConfig = () => {
     if (!isLoadingServerConfig) {
       validateConfig();
     }
-  }, [apiBaseUrl, isConfigured, isLoadingServerConfig, isLocalMode]);
+  }, [apiBaseUrl, isConfigured, isLoadingServerConfig, isLocalMode, serverConfig]);
 
   // Reset validation when server config loading state changes
   useEffect(() => {

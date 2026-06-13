@@ -74,15 +74,14 @@ const useAuthStore = create<AuthState>((set) => ({
 
       const authToken = await AsyncStorage.getItem('authCookies');
       if (!authToken) {
-        if (serverConfig && serverConfig.StorageType === "localstorage") {
-          const loginResult = await api.login().catch(() => {
-            set({ isLoggedIn: false, isLoginModalVisible: true });
-          });
-          if (loginResult && loginResult.ok) {
-            set({ isLoggedIn: true });
-          }
+        const loginResult = await api.login().catch((error) => {
+          logger.error("Failed to auto-login:", error);
+          return null;
+        });
+        if (loginResult && loginResult.ok) {
+          set({ isLoggedIn: true, isLoginModalVisible: false });
         } else {
-          set({ isLoggedIn: false, isLoginModalVisible: true });
+          set({ isLoggedIn: false, isLoginModalVisible: false });
         }
       } else {
         set({ isLoggedIn: true, isLoginModalVisible: false });

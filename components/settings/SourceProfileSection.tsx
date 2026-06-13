@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, TextInput, View } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { StyledButton } from "@/components/StyledButton";
 import { SettingsSection } from "./SettingsSection";
@@ -8,6 +8,8 @@ import { SourceProfile } from "@/services/luna";
 interface SourceProfileSectionProps {
   profiles: SourceProfile[];
   activeProfileId: string | null;
+  importUrl: string;
+  onImportUrlChange: (url: string) => void;
   onImportPress: () => void;
   onSwitchProfile: (profileId: string) => void;
   onDeleteProfile: (profileId: string) => void;
@@ -19,21 +21,33 @@ interface SourceProfileSectionProps {
 export function SourceProfileSection({
   profiles,
   activeProfileId,
+  importUrl,
+  onImportUrlChange,
   onImportPress,
   onSwitchProfile,
   onDeleteProfile,
-  onFocus,
-  onBlur,
 }: SourceProfileSectionProps) {
   const activeProfile = profiles.find((profile) => profile.id === activeProfileId) ?? null;
 
   return (
-    <SettingsSection focusable onFocus={onFocus} onBlur={onBlur}>
+    <SettingsSection>
       <ThemedText style={styles.sectionTitle}>播放源档案</ThemedText>
       <ThemedText style={styles.label}>当前播放源档案</ThemedText>
       <ThemedText style={styles.value}>{activeProfile?.name ?? "未选择"}</ThemedText>
 
-      <StyledButton text="导入 JSON" onPress={onImportPress} style={styles.actionButton} />
+      <View style={styles.importUrlContainer}>
+        <TextInput
+          placeholder="输入播放源档案 JSON 网址"
+          placeholderTextColor="#777"
+          value={importUrl}
+          onChangeText={onImportUrlChange}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          style={styles.importUrlInput}
+        />
+        <StyledButton text="输入网址导入" onPress={onImportPress} style={styles.actionButton} />
+      </View>
 
       <View style={styles.profileList}>
         {profiles.map((profile) => (
@@ -77,7 +91,19 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     alignSelf: "flex-start",
+  },
+  importUrlContainer: {
+    gap: 8,
     marginBottom: 16,
+  },
+  importUrlInput: {
+    borderWidth: 1,
+    borderColor: "#444",
+    borderRadius: 8,
+    color: "#fff",
+    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   profileList: {
     gap: 12,

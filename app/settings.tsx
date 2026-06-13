@@ -23,7 +23,7 @@ import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
 import { DeviceUtils } from "@/utils/DeviceUtils";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import useSourceStore from "@/stores/sourceStore";
-import * as DocumentPicker from "expo-document-picker";
+import { normalizeSourceProfileImportUrl } from "@/services/luna/sourceProfileUtils";
 
 type SectionItem = {
   component: React.ReactElement;
@@ -41,6 +41,7 @@ export default function SettingsScreen() {
   const { loadSettings, saveSettings, setApiBaseUrl, setM3uUrl } = useSettingsStore();
   const { loadResources, profiles, activeProfileId, switchProfile, removeProfile, importProfileFromJson } = useSourceStore();
   const { lastMessage, targetPage, clearMessage } = useRemoteControlStore();
+  const isImportingProfileRef = useRef(false);
   const backgroundColor = useThemeColor({}, "background");
   const insets = useSafeAreaInsets();
 
@@ -53,6 +54,7 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentFocusIndex, setCurrentFocusIndex] = useState(0);
   const [currentSection, setCurrentSection] = useState<string | null>(null);
+  const [sourceProfileImportUrl, setSourceProfileImportUrl] = useState("");
 
   const saveButtonRef = useRef<any>(null);
   const apiSectionRef = useRef<any>(null);
@@ -106,7 +108,6 @@ export default function SettingsScreen() {
 
   const handleSwitchProfile = async (profileId: string) => {
     await switchProfile(profileId);
-    markAsChanged();
     Toast.show({
       type: "success",
       text1: "已切换播放源档案",
@@ -116,7 +117,6 @@ export default function SettingsScreen() {
   const handleDeleteProfile = async (profileId: string) => {
     try {
       await removeProfile(profileId);
-      markAsChanged();
       Toast.show({
         type: "success",
         text1: "已删除导入档案",
@@ -127,22 +127,26 @@ export default function SettingsScreen() {
   };
 
   const handleImportProfile = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "application/json",
-        copyToCacheDirectory: true,
-      });
+    if (isImportingProfileRef.current) {
+      return;
+    }
 
-      if (result.canceled || result.assets.length === 0) {
+    isImportingProfileRef.current = true;
+
+    try {
+      const importUrl = sourceProfileImportUrl.trim();
+      if (!importUrl) {
         return;
       }
 
-      const asset = result.assets[0];
-      const response = await fetch(asset.uri);
-      const rawJson = await response.text();
-      const importResult = await importProfileFromJson(asset.name, rawJson);
+      const response = await fetch(normalizeSourceProfileImportUrl(importUrl));
+      if (!response.ok) {
+        throw new Error("download_source_profile_failed");
+      }
 
-      markAsChanged();
+      const rawJson = await response.text();
+      const importResult = await importProfileFromJson(importUrl, rawJson);
+
       Toast.show({
         type: "success",
         text1: "已导入播放源档案",
@@ -154,8 +158,12 @@ export default function SettingsScreen() {
           ? "不是支持的 LunaTV 配置格式"
           : error?.message === "empty_source_profile"
             ? "导入文件中没有有效播放源"
-            : "导入播放源档案失败";
+            : error?.message === "download_source_profile_failed"
+              ? "下载播放源档案失败"
+              : "导入播放源档案失败";
       Alert.alert("错误", message);
+    } finally {
+      isImportingProfileRef.current = false;
     }
   };
 
@@ -275,6 +283,8 @@ export default function SettingsScreen() {
         <SourceProfileSection
           profiles={profiles}
           activeProfileId={activeProfileId}
+          importUrl={sourceProfileImportUrl}
+          onImportUrlChange={setSourceProfileImportUrl}
           onImportPress={handleImportProfile}
           onSwitchProfile={handleSwitchProfile}
           onDeleteProfile={handleDeleteProfile}

@@ -13,6 +13,7 @@ import { APIConfigSection } from "@/components/settings/APIConfigSection";
 import { LiveStreamSection } from "@/components/settings/LiveStreamSection";
 import { RemoteInputSection } from "@/components/settings/RemoteInputSection";
 import { SourceProfileSection } from "@/components/settings/SourceProfileSection";
+import { SourceProfileImportSection } from "@/components/settings/SourceProfileImportSection";
 import { UpdateSection } from "@/components/settings/UpdateSection";
 import { VideoSourceSection } from "@/components/settings/VideoSourceSection";
 import Toast from "react-native-toast-message";
@@ -280,17 +281,27 @@ export default function SettingsScreen() {
     },
     {
       component: (
+        <SourceProfileImportSection
+          onImportPress={handleImportProfile}
+          onFocus={() => {
+            setCurrentFocusIndex(deviceType !== "mobile" ? 4 : 2);
+            setCurrentSection("sourceProfileImport");
+          }}
+        />
+      ),
+      key: "sourceProfileImport",
+    },
+    {
+      component: (
         <SourceProfileSection
           profiles={profiles}
           activeProfileId={activeProfileId}
           importUrl={sourceProfileImportUrl}
           onImportUrlChange={setSourceProfileImportUrl}
-          onImportPress={handleImportProfile}
           onSwitchProfile={handleSwitchProfile}
           onDeleteProfile={handleDeleteProfile}
-          onChanged={markAsChanged}
           onFocus={() => {
-            setCurrentFocusIndex(deviceType !== "mobile" ? 4 : 2);
+            setCurrentFocusIndex(deviceType !== "mobile" ? 5 : 3);
             setCurrentSection("sourceProfile");
           }}
         />

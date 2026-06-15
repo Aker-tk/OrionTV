@@ -13,7 +13,6 @@ import { APIConfigSection } from "@/components/settings/APIConfigSection";
 import { LiveStreamSection } from "@/components/settings/LiveStreamSection";
 import { RemoteInputSection } from "@/components/settings/RemoteInputSection";
 import { SourceProfileSection } from "@/components/settings/SourceProfileSection";
-import { SourceProfileImportSection } from "@/components/settings/SourceProfileImportSection";
 import { UpdateSection } from "@/components/settings/UpdateSection";
 import { VideoSourceSection } from "@/components/settings/VideoSourceSection";
 import Toast from "react-native-toast-message";
@@ -24,7 +23,6 @@ import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
 import { DeviceUtils } from "@/utils/DeviceUtils";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import useSourceStore from "@/stores/sourceStore";
-import { normalizeSourceProfileImportUrl } from "@/services/luna/sourceProfileUtils";
 
 type SectionItem = {
   component: React.ReactElement;
@@ -40,9 +38,8 @@ function isSectionItem(
 
 export default function SettingsScreen() {
   const { loadSettings, saveSettings, setApiBaseUrl, setM3uUrl } = useSettingsStore();
-  const { loadResources, profiles, activeProfileId, switchProfile, removeProfile, importProfileFromJson } = useSourceStore();
+  const { loadResources, resetProfilesToDefault } = useSourceStore();
   const { lastMessage, targetPage, clearMessage } = useRemoteControlStore();
-  const isImportingProfileRef = useRef(false);
   const backgroundColor = useThemeColor({}, "background");
   const insets = useSafeAreaInsets();
 
@@ -55,7 +52,6 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentFocusIndex, setCurrentFocusIndex] = useState(0);
   const [currentSection, setCurrentSection] = useState<string | null>(null);
-  const [sourceProfileImportUrl, setSourceProfileImportUrl] = useState("");
 
   const saveButtonRef = useRef<any>(null);
   const apiSectionRef = useRef<any>(null);
@@ -107,64 +103,15 @@ export default function SettingsScreen() {
     setHasChanges(true);
   };
 
-  const handleSwitchProfile = async (profileId: string) => {
-    await switchProfile(profileId);
-    Toast.show({
-      type: "success",
-      text1: "已切换播放源档案",
-    });
-  };
-
-  const handleDeleteProfile = async (profileId: string) => {
+  const handleRestoreDefaultProfile = async () => {
     try {
-      await removeProfile(profileId);
+      await resetProfilesToDefault();
       Toast.show({
         type: "success",
-        text1: "已删除导入档案",
+        text1: "已恢复 LunaTV 默认源",
       });
     } catch {
-      Alert.alert("错误", "删除播放源档案失败");
-    }
-  };
-
-  const handleImportProfile = async () => {
-    if (isImportingProfileRef.current) {
-      return;
-    }
-
-    isImportingProfileRef.current = true;
-
-    try {
-      const importUrl = sourceProfileImportUrl.trim();
-      if (!importUrl) {
-        return;
-      }
-
-      const response = await fetch(normalizeSourceProfileImportUrl(importUrl));
-      if (!response.ok) {
-        throw new Error("download_source_profile_failed");
-      }
-
-      const rawJson = await response.text();
-      const importResult = await importProfileFromJson(importUrl, rawJson);
-
-      Toast.show({
-        type: "success",
-        text1: "已导入播放源档案",
-        text2: importResult.skippedCount > 0 ? `跳过 ${importResult.skippedCount} 个无效项` : undefined,
-      });
-    } catch (error: any) {
-      const message =
-        error?.message === "unsupported_lunatv_config"
-          ? "不是支持的 LunaTV 配置格式"
-          : error?.message === "empty_source_profile"
-            ? "导入文件中没有有效播放源"
-            : error?.message === "download_source_profile_failed"
-              ? "下载播放源档案失败"
-              : "导入播放源档案失败";
-      Alert.alert("错误", message);
-    } finally {
-      isImportingProfileRef.current = false;
+      Alert.alert("错误", "恢复 LunaTV 默认源失败");
     }
   };
 
@@ -281,27 +228,10 @@ export default function SettingsScreen() {
     },
     {
       component: (
-        <SourceProfileImportSection
-          onImportPress={handleImportProfile}
+        <SourceProfileSection
+          onRestoreDefault={handleRestoreDefaultProfile}
           onFocus={() => {
             setCurrentFocusIndex(deviceType !== "mobile" ? 4 : 2);
-            setCurrentSection("sourceProfileImport");
-          }}
-        />
-      ),
-      key: "sourceProfileImport",
-    },
-    {
-      component: (
-        <SourceProfileSection
-          profiles={profiles}
-          activeProfileId={activeProfileId}
-          importUrl={sourceProfileImportUrl}
-          onImportUrlChange={setSourceProfileImportUrl}
-          onSwitchProfile={handleSwitchProfile}
-          onDeleteProfile={handleDeleteProfile}
-          onFocus={() => {
-            setCurrentFocusIndex(deviceType !== "mobile" ? 5 : 3);
             setCurrentSection("sourceProfile");
           }}
         />

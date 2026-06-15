@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { lunaConfig, ApiSite, SourceProfile } from "@/services/luna";
+import { BUILTIN_LUNA_PROFILE_ID, BUILTIN_SOURCE_PROFILES } from "@/services/luna/builtinProfiles";
 import { toggleVideoSourceSelection } from "./sourceStoreUtils";
 
 interface SourceState {
@@ -12,6 +13,7 @@ interface SourceState {
   switchProfile: (profileId: string) => Promise<void>;
   removeProfile: (profileId: string) => Promise<void>;
   importProfileFromJson: (fileName: string, rawJson: string) => Promise<{ skippedCount: number }>;
+  resetProfilesToDefault: () => Promise<void>;
   toggleResourceEnabled: (resourceKey: string) => void;
 }
 
@@ -51,6 +53,13 @@ const useSourceStore = create<SourceState>((set, get) => ({
     return {
       skippedCount: result.skippedCount,
     };
+  },
+  resetProfilesToDefault: async () => {
+    await lunaConfig.updateConfig({
+      sourceProfiles: BUILTIN_SOURCE_PROFILES,
+      activeSourceProfileId: BUILTIN_LUNA_PROFILE_ID,
+    });
+    await get().loadResources();
   },
   toggleResourceEnabled: (resourceKey: string) => {
     const { videoSource, setVideoSource } = useSettingsStore.getState();

@@ -15,37 +15,18 @@ jest.mock("@/hooks/useAnimation", () => ({
 import { SourceProfileSection } from "./SourceProfileSection";
 
 describe("SourceProfileSection", () => {
-  it("shows the active profile name and URL input", () => {
+  it("shows the active profile name without owning the import URL input", () => {
     const tree = renderer.create(
       <SourceProfileSection
         profiles={[{ id: "builtin-luna", name: "LunaTV 默认源", type: "builtin", sites: [] }]}
         activeProfileId="builtin-luna"
-        importUrl=""
-        onImportUrlChange={jest.fn()}
         onSwitchProfile={jest.fn()}
         onDeleteProfile={jest.fn()}
       />
     );
 
     expect(tree.root.findAllByProps({ children: "当前播放源档案" }).length).toBeGreaterThan(0);
-    expect(tree.root.findByProps({ placeholder: "输入播放源档案 JSON 网址" })).toBeTruthy();
-  });
-
-  it("shows the URL input with value", () => {
-    const tree = renderer.create(
-      <SourceProfileSection
-        profiles={[{ id: "builtin-luna", name: "LunaTV 默认源", type: "builtin", sites: [] }]}
-        activeProfileId="builtin-luna"
-        importUrl="https://example.com/profile.json"
-        onImportUrlChange={jest.fn()}
-        onSwitchProfile={jest.fn()}
-        onDeleteProfile={jest.fn()}
-      />
-    );
-
-    expect(tree.root.findByProps({ placeholder: "输入播放源档案 JSON 网址" }).props.value).toBe(
-      "https://example.com/profile.json"
-    );
+    expect(tree.root.findAllByProps({ placeholder: "输入播放源档案 JSON 网址" })).toHaveLength(0);
   });
 
   it("allows selecting the default LunaTV profile directly", () => {
@@ -54,8 +35,6 @@ describe("SourceProfileSection", () => {
       <SourceProfileSection
         profiles={[{ id: "builtin-luna", name: "LunaTV 默认源", type: "builtin", sites: [] }]}
         activeProfileId={null}
-        importUrl=""
-        onImportUrlChange={jest.fn()}
         onSwitchProfile={onSwitchProfile}
         onDeleteProfile={jest.fn()}
       />

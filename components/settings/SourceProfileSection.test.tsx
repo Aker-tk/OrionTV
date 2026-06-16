@@ -15,39 +15,35 @@ jest.mock("@/hooks/useAnimation", () => ({
 import { SourceProfileSection } from "./SourceProfileSection";
 
 describe("SourceProfileSection", () => {
-  it("shows the active profile name without owning the import URL input", () => {
+  it("renders only the restore default action", () => {
     const tree = renderer.create(
       <SourceProfileSection
-        profiles={[{ id: "builtin-luna", name: "LunaTV 默认源", type: "builtin", sites: [] }]}
-        activeProfileId="builtin-luna"
-        onSwitchProfile={jest.fn()}
-        onDeleteProfile={jest.fn()}
+        onRestoreDefault={jest.fn()}
       />
     );
 
-    expect(tree.root.findAllByProps({ children: "当前播放源档案" }).length).toBeGreaterThan(0);
+    expect(
+      tree.root.findAll(
+        (node) => node.type === Pressable && node.props.accessibilityLabel === "恢复 LunaTV 默认源"
+      )
+    ).toHaveLength(1);
     expect(tree.root.findAllByProps({ placeholder: "输入播放源档案 JSON 网址" })).toHaveLength(0);
   });
 
-  it("allows selecting the default LunaTV profile directly", () => {
-    const onSwitchProfile = jest.fn();
+  it("triggers the restore handler when pressed", () => {
+    const onRestoreDefault = jest.fn();
     const tree = renderer.create(
       <SourceProfileSection
-        profiles={[{ id: "builtin-luna", name: "LunaTV 默认源", type: "builtin", sites: [] }]}
-        activeProfileId={null}
-        onSwitchProfile={onSwitchProfile}
-        onDeleteProfile={jest.fn()}
+        onRestoreDefault={onRestoreDefault}
       />
     );
 
-    const profileButton = tree.root.findAllByType(Pressable).find(
-      (button) => button.props.children?.props?.children === "LunaTV 默认源"
-    );
+    const restoreButton = tree.root.findByProps({ accessibilityLabel: "恢复 LunaTV 默认源" });
 
     act(() => {
-      profileButton?.props.onPress();
+      restoreButton.props.onPress();
     });
 
-    expect(onSwitchProfile).toHaveBeenCalledWith("builtin-luna");
+    expect(onRestoreDefault).toHaveBeenCalledTimes(1);
   });
 });

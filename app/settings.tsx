@@ -23,6 +23,8 @@ import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
 import { DeviceUtils } from "@/utils/DeviceUtils";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import useSourceStore from "@/stores/sourceStore";
+import { SourceProfileImportSection } from "@/components/settings/SourceProfileImportSection";
+import { normalizeSourceProfileImportUrl } from "@/services/luna/sourceProfileUtils";
 
 type SectionItem = {
   component: React.ReactElement;
@@ -38,7 +40,7 @@ function isSectionItem(
 
 export default function SettingsScreen() {
   const { loadSettings, saveSettings, setApiBaseUrl, setM3uUrl } = useSettingsStore();
-  const { loadResources, resetProfilesToDefault } = useSourceStore();
+  const { loadResources, resetProfilesToDefault, importProfileFromJson } = useSourceStore();
   const { lastMessage, targetPage, clearMessage } = useRemoteControlStore();
   const backgroundColor = useThemeColor({}, "background");
   const insets = useSafeAreaInsets();
@@ -52,6 +54,7 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentFocusIndex, setCurrentFocusIndex] = useState(0);
   const [currentSection, setCurrentSection] = useState<string | null>(null);
+  const [sourceProfileImportUrl, setSourceProfileImportUrl] = useState("");
 
   const saveButtonRef = useRef<any>(null);
   const apiSectionRef = useRef<any>(null);
@@ -80,6 +83,8 @@ export default function SettingsScreen() {
     } else if (currentSection === "livestream" && liveStreamSectionRef.current) {
       // Live Stream Section
       setM3uUrl(message);
+    } else if (currentSection === "sourceProfileImport") {
+      setSourceProfileImportUrl(message);
     }
   };
 
@@ -87,13 +92,42 @@ export default function SettingsScreen() {
     setIsLoading(true);
     try {
       await saveSettings();
+      const importUrl = sourceProfileImportUrl.trim();
+      if (importUrl) {
+        const normalizedUrl = normalizeSourceProfileImportUrl(importUrl);
+        const response = await fetch(normalizedUrl);
+        if (!response.ok) {
+          throw new Error("download_source_profile_failed");
+        }
+
+        const rawJson = await response.text();
+        const fileName = normalizedUrl.split("/").filter(Boolean).at(-1) || importUrl;
+        const importResult = await importProfileFromJson(fileName, rawJson);
+        setSourceProfileImportUrl("");
+        Toast.show({
+          type: "success",
+          text1: "已导入播放源档案",
+          text2: importResult.skippedCount > 0 ? `跳过 ${importResult.skippedCount} 个无效项` : undefined,
+        });
+      }
+
       setHasChanges(false);
-      Toast.show({
-        type: "success",
-        text1: "保存成功",
-      });
-    } catch {
-      Alert.alert("错误", "保存设置失败");
+      if (!importUrl) {
+        Toast.show({
+          type: "success",
+          text1: "保存成功",
+        });
+      }
+    } catch (error: any) {
+      const message =
+        error?.message === "unsupported_lunatv_config"
+          ? "不是支持的 LunaTV 配置格式"
+          : error?.message === "empty_source_profile"
+            ? "导入文件中没有有效播放源"
+            : error?.message === "download_source_profile_failed"
+              ? "下载播放源档案失败"
+              : "保存设置失败";
+      Alert.alert("错误", message);
     } finally {
       setIsLoading(false);
     }
@@ -228,10 +262,26 @@ export default function SettingsScreen() {
     },
     {
       component: (
+        <SourceProfileImportSection
+          importUrl={sourceProfileImportUrl}
+          onImportUrlChange={(url) => {
+            setSourceProfileImportUrl(url);
+            setHasChanges(true);
+          }}
+          onFocus={() => {
+            setCurrentFocusIndex(deviceType !== "mobile" ? 4 : 2);
+            setCurrentSection("sourceProfileImport");
+          }}
+        />
+      ),
+      key: "sourceProfileImport",
+    },
+    {
+      component: (
         <SourceProfileSection
           onRestoreDefault={handleRestoreDefaultProfile}
           onFocus={() => {
-            setCurrentFocusIndex(deviceType !== "mobile" ? 4 : 2);
+            setCurrentFocusIndex(deviceType !== "mobile" ? 5 : 3);
             setCurrentSection("sourceProfile");
           }}
         />

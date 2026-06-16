@@ -3,7 +3,12 @@
 
 // 配置管理
 export { lunaConfig, LunaConfig } from './config';
-export { buildUniqueProfileName, normalizeProfileSiteKey, parseLunaTvConfigJson, stripJsonExtension } from './sourceProfileUtils';
+export {
+  buildUniqueProfileName,
+  normalizeProfileSiteKey,
+  parseLunaTvConfigJson,
+  stripJsonExtension,
+} from './sourceProfileUtils';
 
 // 搜索功能
 export { searchVideos, searchFromSingleSource, deduplicateResults, clearSearchCache } from './search';

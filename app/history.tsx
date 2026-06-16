@@ -10,12 +10,14 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { getCommonResponsiveStyles } from "@/utils/ResponsiveStyles";
 import usePlayHistoryStore from "@/stores/playHistoryStore";
 import { api } from "@/services/api";
+import { getPosterWallConfig } from "@/utils/posterWallConfig";
 
 export default function HistoryScreen() {
   const { items, loading, error, fetchHistory, clearHistory } = usePlayHistoryStore();
   const responsiveConfig = useResponsiveLayout();
   const commonStyles = getCommonResponsiveStyles(responsiveConfig);
   const { deviceType, spacing } = responsiveConfig;
+  const posterWallConfig = getPosterWallConfig(responsiveConfig);
 
   useEffect(() => {
     fetchHistory();
@@ -48,6 +50,10 @@ export default function HistoryScreen() {
       totalEpisodes={item.totalEpisodes}
       api={api}
       onRecordDeleted={fetchHistory}
+      deviceType={deviceType}
+      cardWidth={posterWallConfig.itemWidth}
+      cardHeight={posterWallConfig.cardHeight}
+      spacing={posterWallConfig.itemSpacing}
     />
   );
 
@@ -74,6 +80,11 @@ export default function HistoryScreen() {
       <CustomScrollView
         data={items}
         renderItem={renderItem}
+        numColumns={posterWallConfig.numColumns}
+        itemWidth={posterWallConfig.itemWidth}
+        itemSpacing={posterWallConfig.itemSpacing}
+        contentHorizontalPadding={posterWallConfig.contentHorizontalPadding}
+        columnWrapperStyle={posterWallConfig.columnWrapperStyle}
         loading={loading}
         error={error}
         emptyMessage="暂无播放历史"

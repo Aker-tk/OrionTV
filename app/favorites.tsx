@@ -11,6 +11,7 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { getCommonResponsiveStyles } from "@/utils/ResponsiveStyles";
 import ResponsiveNavigation from "@/components/navigation/ResponsiveNavigation";
 import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
+import { getPosterWallConfig } from "@/utils/posterWallConfig";
 
 export default function FavoritesScreen() {
   const { favorites, loading, error, fetchFavorites } = useFavoritesStore();
@@ -19,6 +20,7 @@ export default function FavoritesScreen() {
   const responsiveConfig = useResponsiveLayout();
   const commonStyles = getCommonResponsiveStyles(responsiveConfig);
   const { deviceType, spacing } = responsiveConfig;
+  const posterWallConfig = getPosterWallConfig(responsiveConfig);
 
   useEffect(() => {
     fetchFavorites();
@@ -37,6 +39,10 @@ export default function FavoritesScreen() {
         api={api}
         episodeIndex={1}
         progress={0}
+        deviceType={deviceType}
+        cardWidth={posterWallConfig.itemWidth}
+        cardHeight={posterWallConfig.cardHeight}
+        spacing={posterWallConfig.itemSpacing}
       />
     );
   };
@@ -54,6 +60,11 @@ export default function FavoritesScreen() {
       <CustomScrollView
         data={favorites}
         renderItem={renderItem}
+        numColumns={posterWallConfig.numColumns}
+        itemWidth={posterWallConfig.itemWidth}
+        itemSpacing={posterWallConfig.itemSpacing}
+        contentHorizontalPadding={posterWallConfig.contentHorizontalPadding}
+        columnWrapperStyle={posterWallConfig.columnWrapperStyle}
         loading={loading}
         error={error}
         emptyMessage="暂无收藏"

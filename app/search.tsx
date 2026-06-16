@@ -19,6 +19,7 @@ import { getCommonResponsiveStyles } from "@/utils/ResponsiveStyles";
 import ResponsiveNavigation from "@/components/navigation/ResponsiveNavigation";
 import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
 import { DeviceUtils } from "@/utils/DeviceUtils";
+import { getPosterWallConfig } from "@/utils/posterWallConfig";
 import Logger from '@/utils/Logger';
 
 const logger = Logger.withTag('SearchScreen');
@@ -38,6 +39,7 @@ export default function SearchScreen() {
   const responsiveConfig = useResponsiveLayout();
   const commonStyles = getCommonResponsiveStyles(responsiveConfig);
   const { deviceType, spacing } = responsiveConfig;
+  const posterWallConfig = getPosterWallConfig(responsiveConfig);
 
   useEffect(() => {
     if (lastMessage && targetPage === 'search') {
@@ -104,6 +106,10 @@ export default function SearchScreen() {
       year={item.year}
       sourceName={item.source_name}
       api={api}
+      deviceType={deviceType}
+      cardWidth={posterWallConfig.itemWidth}
+      cardHeight={posterWallConfig.cardHeight}
+      spacing={posterWallConfig.itemSpacing}
     />
   );
 
@@ -156,6 +162,11 @@ export default function SearchScreen() {
         <CustomScrollView
           data={results}
           renderItem={renderItem}
+          numColumns={posterWallConfig.numColumns}
+          itemWidth={posterWallConfig.itemWidth}
+          itemSpacing={posterWallConfig.itemSpacing}
+          contentHorizontalPadding={posterWallConfig.contentHorizontalPadding}
+          columnWrapperStyle={posterWallConfig.columnWrapperStyle}
           loading={loading}
           error={error}
           emptyMessage="输入关键词开始搜索"

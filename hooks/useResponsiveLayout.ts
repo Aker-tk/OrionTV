@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Dimensions, Platform } from "react-native";
 
+import { getPosterWallLayout } from "@/utils/posterWallLayout";
+
 export type DeviceType = "mobile" | "tablet" | "tv";
 
 export interface ResponsiveConfig {
@@ -28,7 +30,7 @@ const getDeviceType = (width: number): DeviceType => {
   return "mobile";
 };
 
-const getLayoutConfig = (
+export const getLayoutConfig = (
   deviceType: DeviceType,
   width: number,
   height: number,
@@ -56,9 +58,18 @@ const getLayoutConfig = (
 
     case "tv":
     default:
-      columns = 5;
-      cardWidth = 160; // Fixed width for TV
-      cardHeight = 240; // Fixed height for TV
+      ({
+        columns,
+        cardWidth,
+        cardHeight,
+      } = getPosterWallLayout({
+        containerWidth: width,
+        horizontalPadding: spacing,
+        gap: spacing,
+        minCardWidth: 160,
+        aspectRatio: 2 / 3,
+        maxColumns: 8,
+      }));
       break;
   }
 

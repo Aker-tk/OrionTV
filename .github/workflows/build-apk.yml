@@ -27,6 +27,26 @@ jobs:
         id: package-version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.package-version.outputs.version }}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version format: $VERSION"
+            echo "Expected format: X.Y.Z"
+            exit 1
+          fi
+          echo "Validated version: $VERSION"
+
+      - name: Check release tag does not already exist
+        run: |
+          VERSION="${{ steps.package-version.outputs.version }}"
+          TAG="v$VERSION"
+          if git ls-remote --tags origin "refs/tags/$TAG" | grep -q "$TAG"; then
+            echo "Release tag already exists: $TAG"
+            exit 1
+          fi
+          echo "Release tag available: $TAG"
+
       - name: Setup JDK
         uses: actions/setup-java@v3
         with:
@@ -43,6 +63,16 @@ jobs:
         run: |
           mkdir -p artifacts
           cp android/app/build/outputs/apk/release/app-release.apk artifacts/orionTV.${{ steps.package-version.outputs.version }}.apk
+
+      - name: Validate release artifact
+        run: |
+          VERSION="${{ steps.package-version.outputs.version }}"
+          ARTIFACT="artifacts/orionTV.${VERSION}.apk"
+          if [[ ! -s "$ARTIFACT" ]]; then
+            echo "Release artifact missing or empty: $ARTIFACT"
+            exit 1
+          fi
+          echo "Release artifact ready: $ARTIFACT"
 
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2

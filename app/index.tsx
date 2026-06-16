@@ -17,6 +17,7 @@ import ResponsiveNavigation from "@/components/navigation/ResponsiveNavigation";
 import { useApiConfig, getApiConfigErrorMessage } from "@/hooks/useApiConfig";
 import { Colors } from "@/constants/Colors";
 import { getPosterWallConfig } from "@/utils/posterWallConfig";
+import { PerfTracker } from "@/utils/PerfTracker";
 
 const LOAD_MORE_THRESHOLD = 200;
 
@@ -25,6 +26,7 @@ export default function HomeScreen() {
   const colorScheme = "dark";
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const loadMoreMeasurementPendingRef = useRef(false);
   const insets = useSafeAreaInsets();
 
   // 响应式布局配置
@@ -139,12 +141,33 @@ export default function HomeScreen() {
     }
   }, [loading, contentData.length, fadeAnim]);
 
+  useEffect(() => {
+    if (!loading && contentData.length > 0) {
+      const categoryTitle = selectedCategory?.title ?? "unknown";
+
+      PerfTracker.measure("Home", `category:${categoryTitle}`, "content-rendered", `${contentData.length} items`);
+      if (loadMoreMeasurementPendingRef.current) {
+        PerfTracker.measure("Home", `load-more:${categoryTitle}`, "items-appended", `${contentData.length} total`);
+        loadMoreMeasurementPendingRef.current = false;
+      }
+    }
+  }, [loading, contentData.length, selectedCategory?.title]);
+
   const handleCategorySelect = useCallback((category: Category) => {
+    PerfTracker.mark("Home", `category:${category.title}`);
+    loadMoreMeasurementPendingRef.current = false;
     setSelectedTag(null);
     selectCategory(category);
   }, [selectCategory]);
 
+  const handleMeasuredLoadMore = useCallback(() => {
+    PerfTracker.mark("Home", `load-more:${selectedCategory?.title ?? "unknown"}`);
+    loadMoreMeasurementPendingRef.current = true;
+    loadMoreData();
+  }, [loadMoreData, selectedCategory?.title]);
+
   const handleTagSelect = (tag: string) => {
+    loadMoreMeasurementPendingRef.current = false;
     setSelectedTag(tag);
     if (selectedCategory) {
       const categoryWithTag = { ...selectedCategory, tag: tag };
@@ -376,7 +399,7 @@ export default function HomeScreen() {
             loading={loading}
             loadingMore={loadingMore}
             error={error}
-            onEndReached={loadMoreData}
+            onEndReached={handleMeasuredLoadMore}
             loadMoreThreshold={LOAD_MORE_THRESHOLD}
             emptyMessage={selectedCategory?.tags ? "请选择一个子分类" : "该分类下暂无内容"}
             ListFooterComponent={renderFooter}

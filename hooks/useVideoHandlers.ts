@@ -3,8 +3,14 @@ import { Video, ResizeMode } from 'expo-av';
 import Toast from 'react-native-toast-message';
 import usePlayerStore from '@/stores/playerStore';
 import Logger from '@/utils/Logger';
+import { PerfTracker } from '@/utils/PerfTracker';
 
 const logger = Logger.withTag('VideoHandlers');
+
+const describeUrlForLog = (url: string) => url.split(/[?#]/)[0];
+const getPlaybackErrorString = (error: any) => (error as any)?.error?.toString() || error?.toString() || '';
+const describePlaybackErrorForLog = (errorString: string) =>
+  errorString.replace(/https?:\/\/[^\s"'<>]+/g, (url) => describeUrlForLog(url)) || 'Unknown playback error';
 
 interface UseVideoHandlersProps {
   videoRef: RefObject<Video>;
@@ -29,6 +35,10 @@ export const useVideoHandlers = ({
 }: UseVideoHandlersProps) => {
   
   const onLoad = useCallback(async () => {
+    if (currentEpisode?.url) {
+      PerfTracker.measure("Playback", "video-load:current", "onLoad", currentEpisode.title);
+    }
+
     logger.debug('Video onLoad - video ready to play');
     
     try {
@@ -41,14 +51,15 @@ export const useVideoHandlers = ({
       await videoRef.current?.playAsync();
       usePlayerStore.setState({ isLoading: false });
     } catch (error) {
-      logger.debug('Failed to auto-play after onLoad:', error);
+      logger.debug('Failed to auto-play after onLoad:', describePlaybackErrorForLog(getPlaybackErrorString(error)));
       usePlayerStore.setState({ isLoading: false });
     }
-  }, [videoRef, initialPosition, introEndTime]);
+  }, [videoRef, initialPosition, introEndTime, currentEpisode?.url, currentEpisode?.title]);
 
   const onLoadStart = useCallback(() => {
     if (!currentEpisode?.url) return;
     
+    PerfTracker.mark("Playback", "video-load:current");
     logger.debug('Video onLoadStart - starting to load video');
     usePlayerStore.setState({ isLoading: true });
   }, [currentEpisode?.url]);
@@ -56,18 +67,19 @@ export const useVideoHandlers = ({
   const onError = useCallback((error: any) => {
     if (!currentEpisode?.url) return;
     
-    logger.error('Video playback error:', error);
-    
-    const errorString = (error as any)?.error?.toString() || error?.toString() || '';
+    const errorString = getPlaybackErrorString(error);
+    logger.error('Video playback error:', describePlaybackErrorForLog(errorString));
+
     const isSSLError = errorString.includes('SSLHandshakeException') || 
                       errorString.includes('CertPathValidatorException') ||
                       errorString.includes('Trust anchor for certification path not found');
     const isNetworkError = errorString.includes('HttpDataSourceException') ||
                          errorString.includes('IOException') ||
                          errorString.includes('SocketTimeoutException');
+    const safeUrl = describeUrlForLog(currentEpisode.url);
     
     if (isSSLError) {
-      logger.error('SSL certificate validation failed for URL:', currentEpisode.url);
+      logger.error('SSL certificate validation failed for URL:', safeUrl);
       Toast.show({ 
         type: "error", 
         text1: "SSL证书错误，正在尝试其他播放源...",
@@ -75,7 +87,7 @@ export const useVideoHandlers = ({
       });
       usePlayerStore.getState().handleVideoError('ssl', currentEpisode.url);
     } else if (isNetworkError) {
-      logger.error('Network connection failed for URL:', currentEpisode.url);
+      logger.error('Network connection failed for URL:', safeUrl);
       Toast.show({ 
         type: "error", 
         text1: "网络连接失败，正在尝试其他播放源...",
@@ -83,7 +95,7 @@ export const useVideoHandlers = ({
       });
       usePlayerStore.getState().handleVideoError('network', currentEpisode.url);
     } else {
-      logger.error('Other video error for URL:', currentEpisode.url);
+      logger.error('Other video error for URL:', safeUrl);
       Toast.show({ 
         type: "error", 
         text1: "视频播放失败，正在尝试其他播放源...",

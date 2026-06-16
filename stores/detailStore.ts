@@ -5,10 +5,13 @@ import { getResolutionFromM3U8 } from "@/services/m3u8";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { FavoriteManager } from "@/services/storage";
 import Logger from "@/utils/Logger";
+import { PerfTracker } from "@/utils/PerfTracker";
 
 const logger = Logger.withTag('DetailStore');
 
 export type SearchResultWithResolution = SearchResult & { resolution?: string | null };
+
+const getResultKey = (result: Pick<SearchResult, "source" | "id">) => `${result.source}:${result.id}`;
 
 interface DetailState {
   q: string | null;
@@ -43,8 +46,8 @@ const useDetailStore = create<DetailState>((set, get) => ({
   failedSources: new Set(),
 
   init: async (q, preferredSource, id) => {
-    const perfStart = performance.now();
-    logger.info(`[PERF] DetailStore.init START - q: ${q}, preferredSource: ${preferredSource}, id: ${id}`);
+    PerfTracker.mark("Detail", `init:${q}`);
+    logger.info(`Initializing detail for "${q}"`);
     
     const { controller: oldController } = get();
     if (oldController) {
@@ -52,6 +55,7 @@ const useDetailStore = create<DetailState>((set, get) => ({
     }
     const newController = new AbortController();
     const signal = newController.signal;
+    const shouldIgnoreResult = () => signal.aborted || get().controller !== newController;
 
     set({
       q,
@@ -64,39 +68,30 @@ const useDetailStore = create<DetailState>((set, get) => ({
     });
 
     const { videoSource } = useSettingsStore.getState();
+    let firstResultsMeasured = false;
 
-    const processAndSetResults = async (results: SearchResult[], merge = false) => {
-      const resolutionStart = performance.now();
-      logger.info(`[PERF] Resolution detection START - processing ${results.length} sources`);
-      
-      const resultsWithResolution = await Promise.all(
-        results.map(async (searchResult) => {
-          let resolution;
-          const m3u8Start = performance.now();
-          try {
-            if (searchResult.episodes && searchResult.episodes.length > 0) {
-              resolution = await getResolutionFromM3U8(searchResult.episodes[0], signal);
-            }
-          } catch (e) {
-            if ((e as Error).name !== "AbortError") {
-              logger.info(`Failed to get resolution for ${searchResult.source_name}`, e);
-            }
-          }
-          const m3u8End = performance.now();
-          logger.info(`[PERF] M3U8 resolution for ${searchResult.source_name}: ${(m3u8End - m3u8Start).toFixed(2)}ms (${resolution || 'failed'})`);
-          return { ...searchResult, resolution };
-        })
-      );
-      
-      const resolutionEnd = performance.now();
-      logger.info(`[PERF] Resolution detection COMPLETE - took ${(resolutionEnd - resolutionStart).toFixed(2)}ms`);
-
-      if (signal.aborted) return;
+    const mergeResults = (results: SearchResultWithResolution[], merge = false) => {
+      if (shouldIgnoreResult()) return;
 
       set((state) => {
-        const existingSources = new Set(state.searchResults.map((r) => r.source));
-        const newResults = resultsWithResolution.filter((r) => !existingSources.has(r.source));
-        const finalResults = merge ? [...state.searchResults, ...newResults] : resultsWithResolution;
+        const existingResultKeys = new Set(state.searchResults.map(getResultKey));
+        const newResults = results.filter((r) => !existingResultKeys.has(getResultKey(r)));
+        const resultsByKey = new Map(results.map((r) => [getResultKey(r), r]));
+        const mergedExistingResults = state.searchResults.map((existingResult) => {
+          const updatedResult = resultsByKey.get(getResultKey(existingResult));
+          if (!updatedResult || !Object.prototype.hasOwnProperty.call(updatedResult, "resolution")) {
+            return existingResult;
+          }
+
+          return { ...existingResult, resolution: updatedResult.resolution };
+        });
+        const finalResults = merge ? [...mergedExistingResults, ...newResults] : results;
+        const detailUpdate = state.detail ? resultsByKey.get(getResultKey(state.detail)) : undefined;
+        const detail = state.detail
+          ? detailUpdate && Object.prototype.hasOwnProperty.call(detailUpdate, "resolution")
+            ? { ...state.detail, resolution: detailUpdate.resolution }
+            : state.detail
+          : finalResults[0] ?? null;
 
         return {
           searchResults: finalResults,
@@ -105,8 +100,54 @@ const useDetailStore = create<DetailState>((set, get) => ({
             source_name: r.source_name,
             resolution: r.resolution,
           })),
-          detail: state.detail ?? finalResults[0] ?? null,
+          detail,
         };
+      });
+    };
+
+    const enrichResultsWithResolution = async (results: SearchResult[], merge = false) => {
+      if (results.length === 0 || shouldIgnoreResult()) return;
+
+      const resultsWithResolution = await Promise.all(
+        results.map(async (searchResult) => {
+          let resolution: string | null | undefined;
+          try {
+            if (searchResult.episodes && searchResult.episodes.length > 0) {
+              resolution = await getResolutionFromM3U8(searchResult.episodes[0], signal);
+            }
+          } catch (e) {
+            if ((e as Error).name === "AbortError") {
+              throw e;
+            }
+
+            logger.info(`Failed to get resolution for ${searchResult.source_name}`, e);
+          }
+
+          return { ...searchResult, resolution };
+        })
+      );
+
+      if (shouldIgnoreResult()) return;
+
+      const incomingResultKeys = new Set(results.map(getResultKey));
+      const hasAdditionalResults = get().searchResults.some((r) => !incomingResultKeys.has(getResultKey(r)));
+      mergeResults(resultsWithResolution, merge || hasAdditionalResults);
+    };
+
+    const processAndSetResults = (results: SearchResult[], merge = false) => {
+      if (shouldIgnoreResult()) return;
+
+      mergeResults(results, merge);
+
+      if (results.length > 0 && !firstResultsMeasured) {
+        firstResultsMeasured = true;
+        PerfTracker.measure("Detail", `init:${q}`, "first-results", `${results.length} sources`);
+      }
+
+      enrichResultsWithResolution(results, merge).catch((error) => {
+        if ((error as Error).name !== "AbortError" && !shouldIgnoreResult()) {
+          logger.warn(`[WARN] Failed to enrich result resolutions:`, error);
+        }
       });
     };
 
@@ -130,13 +171,15 @@ const useDetailStore = create<DetailState>((set, get) => ({
         const searchPreferredEnd = performance.now();
         logger.info(`[PERF] API searchVideo (preferred) END - took ${(searchPreferredEnd - searchPreferredStart).toFixed(2)}ms, results: ${preferredResult.length}, error: ${!!preferredSearchError}`);
         
-        if (signal.aborted) return;
+        if (shouldIgnoreResult()) return;
         
         // 检查preferred source结果
         if (preferredResult.length > 0) {
           logger.info(`[SUCCESS] Preferred source "${preferredSource}" found ${preferredResult.length} results for "${q}"`);
-          await processAndSetResults(preferredResult, false);
-          set({ loading: false });
+          processAndSetResults(preferredResult, false);
+          if (!shouldIgnoreResult()) {
+            set({ loading: false });
+          }
         } else {
           // 降级策略：preferred source失败时立即尝试所有源
           if (preferredSearchError) {
@@ -153,14 +196,17 @@ const useDetailStore = create<DetailState>((set, get) => ({
             const { results: allResults } = await api.searchVideos(q);
             const fallbackEnd = performance.now();
             logger.info(`[PERF] FALLBACK search END - took ${(fallbackEnd - fallbackStart).toFixed(2)}ms, total results: ${allResults.length}`);
+            if (shouldIgnoreResult()) return;
             
             const filteredResults = allResults.filter(item => item.title === q);
             logger.info(`[FALLBACK] Filtered results: ${filteredResults.length} matches for "${q}"`);
             
             if (filteredResults.length > 0) {
               logger.info(`[SUCCESS] FALLBACK search found results, proceeding with ${filteredResults[0].source_name}`);
-              await processAndSetResults(filteredResults, false);
-              set({ loading: false });
+              processAndSetResults(filteredResults, false);
+              if (!shouldIgnoreResult()) {
+                set({ loading: false });
+              }
             } else {
               logger.error(`[ERROR] FALLBACK search found no matching results for "${q}"`);
               set({ 
@@ -169,6 +215,7 @@ const useDetailStore = create<DetailState>((set, get) => ({
               });
             }
           } catch (fallbackError) {
+            if (shouldIgnoreResult()) return;
             logger.error(`[ERROR] FALLBACK search FAILED:`, fallbackError);
             set({ 
               error: `搜索失败：${fallbackError instanceof Error ? fallbackError.message : '网络错误，请稍后重试'}`,
@@ -188,9 +235,10 @@ const useDetailStore = create<DetailState>((set, get) => ({
             const searchAllEnd = performance.now();
             logger.info(`[PERF] API searchVideos (background) END - took ${(searchAllEnd - searchAllStart).toFixed(2)}ms, results: ${allResults.length}`);
             
-            if (signal.aborted) return;
-            await processAndSetResults(allResults.filter(item => item.title === q), true);
+            if (shouldIgnoreResult()) return;
+            processAndSetResults(allResults.filter(item => item.title === q), true);
           } catch (backgroundError) {
+            if (shouldIgnoreResult()) return;
             logger.warn(`[WARN] Background search failed, but preferred source already succeeded:`, backgroundError);
           }
         }
@@ -204,6 +252,7 @@ const useDetailStore = create<DetailState>((set, get) => ({
           
           const resourcesEnd = performance.now();
           logger.info(`[PERF] API getResources END - took ${(resourcesEnd - resourcesStart).toFixed(2)}ms, resources: ${allResources.length}`);
+          if (shouldIgnoreResult()) return;
           
           const enabledResources = videoSource.enabledAll
             ? allResources
@@ -228,12 +277,14 @@ const useDetailStore = create<DetailState>((set, get) => ({
               const { results } = await api.searchVideo(q, resource.key, signal);
               const searchEnd = performance.now();
               logger.info(`[PERF] API searchVideo (${resource.name}) took ${(searchEnd - searchStart).toFixed(2)}ms, results: ${results.length}`);
+              if (shouldIgnoreResult()) return;
               
               if (results.length > 0) {
                 totalResults += results.length;
                 logger.info(`[SUCCESS] Source "${resource.name}" found ${results.length} results for "${q}"`);
-                await processAndSetResults(results, true);
+                processAndSetResults(results, true);
                 if (!firstResultFound) {
+                  if (shouldIgnoreResult()) return;
                   set({ loading: false }); // Stop loading indicator on first result
                   firstResultFound = true;
                   logger.info(`[SUCCESS] First result found from "${resource.name}", stopping loading indicator`);
@@ -242,11 +293,13 @@ const useDetailStore = create<DetailState>((set, get) => ({
                 logger.warn(`[WARN] Source "${resource.name}" returned 0 results for "${q}"`);
               }
             } catch (error) {
+              if (shouldIgnoreResult()) return;
               logger.error(`[ERROR] Failed to fetch from ${resource.name}:`, error);
             }
           });
 
           await Promise.all(searchPromises);
+          if (shouldIgnoreResult()) return;
           
           // 检查是否找到任何结果
           if (totalResults === 0) {
@@ -259,6 +312,7 @@ const useDetailStore = create<DetailState>((set, get) => ({
             logger.info(`[SUCCESS] Standard search completed, total results: ${totalResults}`);
           }
         } catch (resourceError) {
+          if (shouldIgnoreResult()) return;
           logger.error(`[ERROR] Failed to get resources:`, resourceError);
           set({ 
             error: `获取视频源失败：${resourceError instanceof Error ? resourceError.message : '网络错误，请稍后重试'}`,
@@ -269,6 +323,7 @@ const useDetailStore = create<DetailState>((set, get) => ({
       }
 
       const favoriteCheckStart = performance.now();
+      if (shouldIgnoreResult()) return;
       const finalState = get();
       
       // 最终检查：如果所有搜索都完成但仍然没有结果
@@ -284,9 +339,14 @@ const useDetailStore = create<DetailState>((set, get) => ({
         logger.info(`[INFO] Checking favorite status for source: ${source}, id: ${id}`);
         try {
           const isFavorited = await FavoriteManager.isFavorited(source, id.toString());
+          const currentDetail = get().detail;
+          if (shouldIgnoreResult() || !currentDetail || getResultKey(currentDetail) !== getResultKey(finalState.detail)) {
+            return;
+          }
           set({ isFavorited });
           logger.info(`[INFO] Favorite status: ${isFavorited}`);
         } catch (favoriteError) {
+          if (shouldIgnoreResult()) return;
           logger.warn(`[WARN] Failed to check favorite status:`, favoriteError);
         }
       } else {
@@ -297,6 +357,7 @@ const useDetailStore = create<DetailState>((set, get) => ({
       logger.info(`[PERF] Favorite check took ${(favoriteCheckEnd - favoriteCheckStart).toFixed(2)}ms`);
       
     } catch (e) {
+      if (shouldIgnoreResult()) return;
       if ((e as Error).name !== "AbortError") {
         logger.error(`[ERROR] DetailStore.init caught unexpected error:`, e);
         const errorMessage = e instanceof Error ? e.message : "获取数据失败";
@@ -305,21 +366,24 @@ const useDetailStore = create<DetailState>((set, get) => ({
         logger.info(`[INFO] DetailStore.init aborted by user`);
       }
     } finally {
-      if (!signal.aborted) {
+      if (!shouldIgnoreResult()) {
         set({ loading: false, allSourcesLoaded: true });
         logger.info(`[INFO] DetailStore.init cleanup completed`);
+
+        PerfTracker.measure("Detail", `init:${q}`, "complete", `${get().searchResults.length} sources`);
       }
-      
-      const perfEnd = performance.now();
-      logger.info(`[PERF] DetailStore.init COMPLETE - total time: ${(perfEnd - perfStart).toFixed(2)}ms`);
     }
   },
 
   setDetail: async (detail) => {
     set({ detail });
+    const detailKey = getResultKey(detail);
     const { source, id } = detail;
     const isFavorited = await FavoriteManager.isFavorited(source, id.toString());
-    set({ isFavorited });
+    const currentDetail = get().detail;
+    if (currentDetail && getResultKey(currentDetail) === detailKey) {
+      set({ isFavorited });
+    }
   },
 
   abort: () => {

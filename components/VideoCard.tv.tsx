@@ -28,6 +28,9 @@ interface VideoCardProps extends React.ComponentProps<typeof TouchableOpacity> {
   onRecordDeleted?: () => void; // 添加回调属性
   api: API;
   deviceType?: DeviceType;
+  cardWidth?: number;
+  cardHeight?: number;
+  spacing?: number;
 }
 
 const VideoCard = forwardRef<View, VideoCardProps>(
@@ -43,15 +46,23 @@ const VideoCard = forwardRef<View, VideoCardProps>(
       progress,
       episodeIndex,
       onFocus,
-      onRecordDeleted,
-      api,
-      deviceType = 'tv',
-      playTime = 0,
-    }: VideoCardProps,
-    ref
-  ) => {
-    const router = useRouter();
-    const [isFocused, setIsFocused] = useState(false);
+        onRecordDeleted,
+        api,
+        deviceType = 'tv',
+        cardWidth: layoutWidth,
+        cardHeight: layoutHeight,
+        spacing: layoutSpacing,
+        playTime = 0,
+      }: VideoCardProps,
+      ref
+    ) => {
+      const router = useRouter();
+      const [isFocused, setIsFocused] = useState(false);
+      const { cardWidth = 160, cardHeight = 240, spacing = 16 } = {
+        cardWidth: layoutWidth,
+        cardHeight: layoutHeight,
+        spacing: layoutSpacing,
+      };
 
     const longPressTriggered = useRef(false);
 
@@ -138,6 +149,7 @@ const VideoCard = forwardRef<View, VideoCardProps>(
 
     // 是否是继续观看的视频
     const isContinueWatching = progress !== undefined && progress > 0 && progress < 1;
+    const styles = createTVStyles(cardWidth, cardHeight, spacing);
 
     return (
       <Animated.View style={[styles.wrapper, animatedStyle]}>
@@ -213,142 +225,141 @@ VideoCard.displayName = "VideoCard";
 
 export default memo(VideoCard);
 
-const CARD_WIDTH = 160;
-const CARD_HEIGHT = 240;
-
-const styles = StyleSheet.create({
-  wrapper: {
-    marginHorizontal: 8,
-  },
-  pressable: {
-    width: CARD_WIDTH + 20,
-    height: CARD_HEIGHT + 60,
-    justifyContent: 'center',
-    alignItems: "center",
-    overflow: "visible",
-  },
-  card: {
-    marginTop: 10,
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    borderRadius: 8,
-    backgroundColor: "#222",
-    overflow: "hidden",
-  },
-  poster: {
-    width: "100%",
-    height: "100%",
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderColor: Colors.dark.primary,
-    borderWidth: 2,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  buttonRow: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    flexDirection: "row",
-    gap: 8,
-  },
-  iconButton: {
-    padding: 4,
-  },
-  favButton: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-  },
-  ratingContainer: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  ratingText: {
-    color: "#FFD700",
-    fontSize: 12,
-    fontWeight: "bold",
-    marginLeft: 4,
-  },
-  infoContainer: {
-    width: CARD_WIDTH,
-    marginTop: 8,
-    alignItems: "flex-start",
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  title: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  yearBadge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  sourceNameBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  badgeText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  progressContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 4,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: Colors.dark.primary,
-  },
-  continueWatchingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.dark.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
-  },
-  continueWatchingText: {
-    color: "white",
-    marginLeft: 5,
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  continueLabel: {
-    color: Colors.dark.primary,
-    fontSize: 12,
-  },
-});
+const createTVStyles = (cardWidth: number, cardHeight: number, spacing: number) =>
+  StyleSheet.create({
+    wrapper: {
+      width: cardWidth,
+      overflow: "visible",
+    },
+    pressable: {
+      width: cardWidth,
+      minHeight: cardHeight + 60,
+      justifyContent: 'center',
+      alignItems: "center",
+      overflow: "visible",
+    },
+    card: {
+      marginTop: 10,
+      width: cardWidth,
+      height: cardHeight,
+      borderRadius: 8,
+      backgroundColor: "#222",
+      overflow: "hidden",
+    },
+    poster: {
+      width: "100%",
+      height: "100%",
+    },
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.3)",
+      borderColor: Colors.dark.primary,
+      borderWidth: 2,
+      borderRadius: 8,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    buttonRow: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+      flexDirection: "row",
+      gap: 8,
+    },
+    iconButton: {
+      padding: 4,
+    },
+    favButton: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+    },
+    ratingContainer: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      borderRadius: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+    },
+    ratingText: {
+      color: "#FFD700",
+      fontSize: 12,
+      fontWeight: "bold",
+      marginLeft: 4,
+    },
+    infoContainer: {
+      width: cardWidth,
+      marginTop: 8,
+      alignItems: "flex-start",
+      marginBottom: spacing,
+      paddingHorizontal: 4,
+    },
+    infoRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      width: "100%",
+    },
+    title: {
+      color: "white",
+      fontSize: 16,
+      fontWeight: "bold",
+      textAlign: "center",
+    },
+    yearBadge: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      borderRadius: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+    },
+    sourceNameBadge: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      borderRadius: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+    },
+    badgeText: {
+      color: "white",
+      fontSize: 12,
+      fontWeight: "bold",
+    },
+    progressContainer: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 4,
+      backgroundColor: "rgba(0, 0, 0, 0.8)",
+    },
+    progressBar: {
+      height: 4,
+      backgroundColor: Colors.dark.primary,
+    },
+    continueWatchingBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: Colors.dark.primary,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 5,
+    },
+    continueWatchingText: {
+      color: "white",
+      marginLeft: 5,
+      fontSize: 12,
+      fontWeight: "bold",
+    },
+    continueLabel: {
+      color: Colors.dark.primary,
+      fontSize: 12,
+    },
+  });

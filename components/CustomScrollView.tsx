@@ -8,6 +8,8 @@ import {
   BackHandler,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  StyleProp,
+  ViewStyle,
 } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
@@ -17,6 +19,10 @@ interface CustomScrollViewProps {
   data: any[];
   renderItem: ({ item, index }: { item: any; index: number }) => React.ReactNode;
   numColumns?: number; // 如果不提供，将使用响应式默认值
+  itemWidth?: number;
+  itemSpacing?: number;
+  contentHorizontalPadding?: number;
+  columnWrapperStyle?: StyleProp<ViewStyle>;
   loading?: boolean;
   loadingMore?: boolean;
   error?: string | null;
@@ -30,6 +36,10 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
   data,
   renderItem,
   numColumns,
+  itemWidth,
+  itemSpacing,
+  contentHorizontalPadding,
+  columnWrapperStyle,
   loading = false,
   loadingMore = false,
   error = null,
@@ -62,6 +72,10 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
 
   // 使用响应式列数，如果没有明确指定的话
   const effectiveColumns = numColumns || responsiveConfig.columns;
+  const effectiveItemWidth = itemWidth || responsiveConfig.cardWidth;
+  const effectiveItemSpacing = itemSpacing ?? responsiveConfig.spacing;
+  const effectiveHorizontalPadding = contentHorizontalPadding ?? responsiveConfig.spacing / 2;
+  const shouldDistributeColumns = Boolean(columnWrapperStyle) && effectiveColumns > 1;
 
   const handleScroll = useCallback(
     ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -107,12 +121,12 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
   const dynamicStyles = StyleSheet.create({
     listContent: {
       paddingBottom: responsiveConfig.spacing * 2,
-      paddingHorizontal: responsiveConfig.spacing / 2,
+      paddingHorizontal: effectiveHorizontalPadding,
     },
     itemContainer: {
-      width: responsiveConfig.cardWidth,
-      marginRight: responsiveConfig.spacing,
-      marginBottom: responsiveConfig.spacing,
+      width: effectiveItemWidth,
+      marginRight: shouldDistributeColumns ? 0 : effectiveItemSpacing,
+      marginBottom: effectiveItemSpacing,
     },
     scrollToTopButton: {
       position: 'absolute',
@@ -170,9 +184,10 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
         data={data}
         renderItem={renderGridItem}
         keyExtractor={keyExtractor}
-        key={effectiveColumns}
+        key={`${effectiveColumns}-${effectiveItemWidth}`}
         numColumns={effectiveColumns}
         contentContainerStyle={dynamicStyles.listContent}
+        columnWrapperStyle={columnWrapperStyle}
         onScroll={handleScroll}
         scrollEventThrottle={64}
         showsVerticalScrollIndicator={responsiveConfig.deviceType !== 'tv'}

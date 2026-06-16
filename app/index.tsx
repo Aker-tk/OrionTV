@@ -16,6 +16,7 @@ import { getCommonResponsiveStyles } from "@/utils/ResponsiveStyles";
 import ResponsiveNavigation from "@/components/navigation/ResponsiveNavigation";
 import { useApiConfig, getApiConfigErrorMessage } from "@/hooks/useApiConfig";
 import { Colors } from "@/constants/Colors";
+import { getPosterWallLayout } from "@/utils/posterWallLayout";
 
 const LOAD_MORE_THRESHOLD = 200;
 
@@ -30,6 +31,24 @@ export default function HomeScreen() {
   const responsiveConfig = useResponsiveLayout();
   const commonStyles = getCommonResponsiveStyles(responsiveConfig);
   const { deviceType, spacing } = responsiveConfig;
+  const posterWallLayout = useMemo(() => {
+    if (deviceType !== "tv") {
+      return {
+        columns: responsiveConfig.columns,
+        cardWidth: responsiveConfig.cardWidth,
+        cardHeight: responsiveConfig.cardHeight,
+      };
+    }
+
+    return getPosterWallLayout({
+      containerWidth: responsiveConfig.screenWidth,
+      horizontalPadding: spacing,
+      gap: spacing,
+      minCardWidth: 160,
+      aspectRatio: 2 / 3,
+      maxColumns: 8,
+    });
+  }, [deviceType, responsiveConfig.cardHeight, responsiveConfig.cardWidth, responsiveConfig.columns, responsiveConfig.screenWidth, spacing]);
 
   const {
     categories,
@@ -226,11 +245,11 @@ export default function HomeScreen() {
       api={api}
       onRecordDeleted={fetchInitialData}
       deviceType={deviceType}
-      cardWidth={responsiveConfig.cardWidth}
-      cardHeight={responsiveConfig.cardHeight}
+      cardWidth={posterWallLayout.cardWidth}
+      cardHeight={posterWallLayout.cardHeight}
       spacing={responsiveConfig.spacing}
     />
-  ), [deviceType, responsiveConfig, fetchInitialData]);
+  ), [api, deviceType, fetchInitialData, posterWallLayout.cardHeight, posterWallLayout.cardWidth, responsiveConfig.spacing]);
 
   const renderFooter = useCallback(() => {
     if (!loadingMore) return null;
@@ -366,6 +385,11 @@ export default function HomeScreen() {
           <CustomScrollView
             data={contentData}
             renderItem={renderContentItem}
+            numColumns={posterWallLayout.columns}
+            itemWidth={posterWallLayout.cardWidth}
+            itemSpacing={spacing}
+            contentHorizontalPadding={0}
+            columnWrapperStyle={deviceType === "tv" ? { justifyContent: "space-between" } : undefined}
             loading={loading}
             loadingMore={loadingMore}
             error={error}

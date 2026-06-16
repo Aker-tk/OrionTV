@@ -175,8 +175,12 @@ export class API {
   /**
    * 获取播放记录
    */
-  async getPlayRecords(): Promise<Record<string, PlayRecord>> {
-    return await playRecordsStorage.getAll();
+  async getPlayRecords(key?: string): Promise<Record<string, PlayRecord>> {
+    const records = await playRecordsStorage.getAll();
+    if (key) {
+      return records[key] ? { [key]: records[key] } : {};
+    }
+    return records;
   }
 
   /**

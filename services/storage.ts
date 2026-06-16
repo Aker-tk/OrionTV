@@ -4,6 +4,7 @@ import { storageConfig } from "./storageConfig";
 import { LOCAL_MODE_BASE_URL } from "@/utils/localMode";
 import Logger from '@/utils/Logger';
 import { DEFAULT_LIVE_STREAM_M3U_URL } from "@/constants/live";
+import { PerfTracker } from "@/utils/PerfTracker";
 
 const logger = Logger.withTag('Storage');
 
@@ -22,6 +23,7 @@ const STORAGE_KEYS = {
 export type PlayRecord = ApiPlayRecord & {
   introEndTime?: number;
   outroStartTime?: number;
+  playbackRate?: number;
 };
 export type Favorite = ApiFavorite;
 
@@ -234,18 +236,31 @@ export class PlayRecordManager {
   }
 
   static async get(source: string, id: string): Promise<PlayRecord | null> {
-    const perfStart = performance.now();
     const key = generateKey(source, id);
-    const storageType = this.getStorageType();
-    logger.debug(`[PERF] PlayRecordManager.get START - source: ${source}, id: ${id}, storageType: ${storageType}`);
-    
-    const records = await this.getAll();
-    const result = records[key] || null;
-    
-    const perfEnd = performance.now();
-    logger.debug(`[PERF] PlayRecordManager.get END - took ${(perfEnd - perfStart).toFixed(2)}ms, found: ${!!result}`);
-    
-    return result;
+    const storageType = this.getStorageType() ?? "localstorage";
+
+    return PerfTracker.timeAsync("Playback", "play-record-get", async () => {
+      let record: PlayRecord | null = null;
+
+      if (storageType === "localstorage") {
+        try {
+          const data = await AsyncStorage.getItem(STORAGE_KEYS.PLAY_RECORDS);
+          const records = data ? (JSON.parse(data) as Record<string, PlayRecord>) : {};
+          record = records[key] || null;
+        } catch (error) {
+          logger.info("Failed to get local play record:", error);
+          return null;
+        }
+      } else {
+        const records = await api.getPlayRecords(key);
+        record = records[key] || null;
+      }
+
+      if (!record) return null;
+
+      const playerSettings = await PlayerSettingsManager.get(source, id);
+      return playerSettings ? { ...record, ...playerSettings } : record;
+    }, storageType);
   }
 
   static async remove(source: string, id: string): Promise<void> {

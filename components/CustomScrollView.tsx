@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from "react";
+import React, { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -50,10 +50,21 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
 }) => {
   const listRef = useRef<FlatList<any>>(null);
   const firstCardRef = useRef<any>(null); // <--- 新增
+  const endReachedPendingRef = useRef(false);
+  const previousLoadingMoreRef = useRef(loadingMore);
+  const previousDataLengthRef = useRef(data.length);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const responsiveConfig = useResponsiveLayout();
   const commonStyles = getCommonResponsiveStyles(responsiveConfig);
   const { deviceType } = responsiveConfig;
+
+  const scrollToTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    // 滚动动画结束后聚焦第一个卡片
+    setTimeout(() => {
+      firstCardRef.current?.focus();
+    }, 500); // 500ms 适配大多数动画时长
+  }, []);
 
   // 添加返回键处理逻辑
   useEffect(() => {
@@ -68,7 +79,19 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
 
       return () => backHandler.remove();
     }
-  }, [showScrollToTop,deviceType]);
+  }, [showScrollToTop, deviceType, scrollToTop]);
+
+  useEffect(() => {
+    const completedLoadingMore = previousLoadingMoreRef.current && !loadingMore;
+    const dataLengthChanged = previousDataLengthRef.current !== data.length;
+
+    if (completedLoadingMore || dataLengthChanged) {
+      endReachedPendingRef.current = false;
+    }
+
+    previousLoadingMoreRef.current = loadingMore;
+    previousDataLengthRef.current = data.length;
+  }, [data.length, loadingMore]);
 
   // 使用响应式列数，如果没有明确指定的话
   const effectiveColumns = numColumns || responsiveConfig.columns;
@@ -86,22 +109,15 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
       const shouldShowScrollToTop = contentOffset.y > 200;
       setShowScrollToTop((current) => (current === shouldShowScrollToTop ? current : shouldShowScrollToTop));
 
-      if (isCloseToBottom && !loadingMore && onEndReached) {
+      if (isCloseToBottom && !loadingMore && onEndReached && !endReachedPendingRef.current) {
+        endReachedPendingRef.current = true;
         onEndReached();
       }
     },
     [onEndReached, loadingMore, loadMoreThreshold]
   );
 
-  const scrollToTop = () => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-    // 滚动动画结束后聚焦第一个卡片
-    setTimeout(() => {
-      firstCardRef.current?.focus();
-    }, 500); // 500ms 适配大多数动画时长
-  };
-
-  const renderFooter = () => {
+  const renderFooter = useCallback(() => {
     if (ListFooterComponent) {
       if (React.isValidElement(ListFooterComponent)) {
         return ListFooterComponent;
@@ -115,10 +131,10 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
       return <ActivityIndicator style={{ marginVertical: 20 }} size="large" />;
     }
     return null;
-  };
+  }, [ListFooterComponent, loadingMore]);
 
   // 动态样式
-  const dynamicStyles = StyleSheet.create({
+  const listStyles = useMemo(() => StyleSheet.create({
     listContent: {
       paddingBottom: responsiveConfig.spacing * 2,
       paddingHorizontal: effectiveHorizontalPadding,
@@ -128,6 +144,15 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
       marginRight: shouldDistributeColumns ? 0 : effectiveItemSpacing,
       marginBottom: effectiveItemSpacing,
     },
+  }), [
+    effectiveHorizontalPadding,
+    effectiveItemSpacing,
+    effectiveItemWidth,
+    responsiveConfig.spacing,
+    shouldDistributeColumns,
+  ]);
+
+  const scrollToTopStyles = useMemo(() => StyleSheet.create({
     scrollToTopButton: {
       position: 'absolute',
       right: responsiveConfig.spacing,
@@ -137,13 +162,16 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
       borderRadius: responsiveConfig.spacing,
       opacity: showScrollToTop ? 1 : 0,
     },
-  });
+  }), [
+    responsiveConfig.spacing,
+    showScrollToTop,
+  ]);
 
   const renderGridItem = useCallback(
     ({ item, index }: { item: any; index: number }) => (
-      <View style={dynamicStyles.itemContainer}>{renderItem({ item, index })}</View>
+      <View style={listStyles.itemContainer}>{renderItem({ item, index })}</View>
     ),
-    [dynamicStyles.itemContainer, renderItem]
+    [listStyles.itemContainer, renderItem]
   );
 
   const keyExtractor = useCallback((item: any, index: number) => {
@@ -186,9 +214,10 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
         keyExtractor={keyExtractor}
         key={`${effectiveColumns}-${effectiveItemWidth}`}
         numColumns={effectiveColumns}
-        contentContainerStyle={dynamicStyles.listContent}
+        contentContainerStyle={listStyles.listContent}
         columnWrapperStyle={columnWrapperStyle}
         onScroll={handleScroll}
+        updateCellsBatchingPeriod={50}
         scrollEventThrottle={64}
         showsVerticalScrollIndicator={responsiveConfig.deviceType !== 'tv'}
         initialNumToRender={effectiveColumns * 2}
@@ -199,7 +228,7 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
       />
       {deviceType!=='tv' && (
         <TouchableOpacity
-          style={dynamicStyles.scrollToTopButton}
+          style={scrollToTopStyles.scrollToTopButton}
           onPress={scrollToTop}
           activeOpacity={0.8}
         >

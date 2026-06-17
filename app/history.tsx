@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
@@ -11,17 +11,27 @@ import { getCommonResponsiveStyles } from "@/utils/ResponsiveStyles";
 import usePlayHistoryStore from "@/stores/playHistoryStore";
 import { api } from "@/services/api";
 import { getPosterWallConfig } from "@/utils/posterWallConfig";
+import { PerfTracker } from "@/utils/PerfTracker";
 
 export default function HistoryScreen() {
   const { items, loading, error, fetchHistory, clearHistory } = usePlayHistoryStore();
+  const loadMeasurementPendingRef = useRef(false);
   const responsiveConfig = useResponsiveLayout();
   const commonStyles = getCommonResponsiveStyles(responsiveConfig);
   const { deviceType, spacing } = responsiveConfig;
   const posterWallConfig = getPosterWallConfig(responsiveConfig);
 
   useEffect(() => {
+    PerfTracker.mark("History", "load");
+    loadMeasurementPendingRef.current = true;
     fetchHistory();
   }, [fetchHistory]);
+
+  useEffect(() => {
+    if (loading || !loadMeasurementPendingRef.current) return;
+    PerfTracker.measure("History", "load", "content-rendered", `${items.length} items`);
+    loadMeasurementPendingRef.current = false;
+  }, [items.length, loading, error]);
 
   const handleClearHistory = useCallback(() => {
     Alert.alert("清空播放历史", "确定要清空所有播放历史吗？", [

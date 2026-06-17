@@ -10,6 +10,7 @@ import { getCommonResponsiveStyles } from "@/utils/ResponsiveStyles";
 import ResponsiveNavigation from "@/components/navigation/ResponsiveNavigation";
 import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
 import { DeviceUtils } from "@/utils/DeviceUtils";
+import { PerfTracker } from "@/utils/PerfTracker";
 
 export default function LiveScreen() {
   const { m3uUrl } = useSettingsStore();
@@ -29,14 +30,21 @@ export default function LiveScreen() {
   const [isChannelListVisible, setIsChannelListVisible] = useState(false);
   const [channelTitle, setChannelTitle] = useState<string | null>(null);
   const titleTimer = useRef<NodeJS.Timeout | null>(null);
+  const loadMeasurementPendingRef = useRef(false);
+  const loadCompletedRef = useRef(false);
+  const loadedChannelCountRef = useRef(0);
 
   const selectedChannelUrl = channels.length > 0 ? getPlayableUrl(channels[currentChannelIndex].url) : null;
 
   useEffect(() => {
     const loadChannels = async () => {
       if (!m3uUrl) return;
+      PerfTracker.mark("Live", "load");
+      loadMeasurementPendingRef.current = true;
+      loadCompletedRef.current = false;
       setIsLoading(true);
       const parsedChannels = await fetchAndParseM3u(m3uUrl);
+      loadedChannelCountRef.current = parsedChannels.length;
       setChannels(parsedChannels);
 
       const groups: Record<string, Channel[]> = parsedChannels.reduce((acc, channel) => {
@@ -56,10 +64,17 @@ export default function LiveScreen() {
       if (parsedChannels.length > 0) {
         showChannelTitle(parsedChannels[0].name);
       }
+      loadCompletedRef.current = true;
       setIsLoading(false);
     };
     loadChannels();
   }, [m3uUrl]);
+
+  useEffect(() => {
+    if (isLoading || !loadMeasurementPendingRef.current || !loadCompletedRef.current) return;
+    PerfTracker.measure("Live", "load", "content-rendered", `${loadedChannelCountRef.current} channels`);
+    loadMeasurementPendingRef.current = false;
+  }, [channels.length, isLoading]);
 
   const showChannelTitle = (title: string) => {
     setChannelTitle(title);

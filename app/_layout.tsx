@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AppState, Platform, View, StyleSheet } from "react-native";
 import Toast from "react-native-toast-message";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -17,6 +17,7 @@ import { UPDATE_CONFIG } from "@/constants/UpdateConfig";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { LOCAL_MODE_BASE_URL } from "@/utils/localMode";
 import { initializeAndroidLifecycle, handleAndroidAppStateChange } from "@/services/androidLifecycleService";
+import { PerfTracker } from "@/utils/PerfTracker";
 import Logger from '@/utils/Logger';
 
 const logger = Logger.withTag('RootLayout');
@@ -34,6 +35,13 @@ export default function RootLayout() {
   const { checkLoginStatus } = useAuthStore();
   const { checkForUpdate, lastCheckTime } = useUpdateStore();
   const responsiveConfig = useResponsiveLayout();
+  const coldStartMarkedRef = useRef(false);
+
+  useEffect(() => {
+    if (coldStartMarkedRef.current) return;
+    PerfTracker.mark("App", "cold-start");
+    coldStartMarkedRef.current = true;
+  }, []);
 
   useEffect(() => {
     const initializeApp = async () => {

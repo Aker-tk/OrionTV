@@ -27,6 +27,7 @@ export default function HomeScreen() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const loadMoreMeasurementPendingRef = useRef(false);
+  const coldStartMeasuredRef = useRef(false);
   const insets = useSafeAreaInsets();
 
   // 响应式布局配置
@@ -146,6 +147,11 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!loading && contentData.length > 0) {
+      if (!coldStartMeasuredRef.current) {
+        PerfTracker.measure("App", "cold-start", "first-content-rendered", `${contentData.length} items`);
+        coldStartMeasuredRef.current = true;
+      }
+
       const categoryTitle = selectedCategory?.title ?? "unknown";
 
       PerfTracker.measure("Home", `category:${categoryTitle}`, "content-rendered", `${contentData.length} items`);

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo } from "react";
+import React, { useEffect, useCallback, useMemo, useRef } from "react";
 import { View, StyleSheet } from "react-native";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
@@ -12,9 +12,11 @@ import { getCommonResponsiveStyles } from "@/utils/ResponsiveStyles";
 import ResponsiveNavigation from "@/components/navigation/ResponsiveNavigation";
 import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
 import { getPosterWallConfig } from "@/utils/posterWallConfig";
+import { PerfTracker } from "@/utils/PerfTracker";
 
 export default function FavoritesScreen() {
   const { favorites, loading, error, fetchFavorites } = useFavoritesStore();
+  const loadMeasurementPendingRef = useRef(false);
 
   // 响应式布局配置
   const responsiveConfig = useResponsiveLayout();
@@ -33,8 +35,16 @@ export default function FavoritesScreen() {
   );
 
   useEffect(() => {
+    PerfTracker.mark("Favorites", "load");
+    loadMeasurementPendingRef.current = true;
     fetchFavorites();
   }, [fetchFavorites]);
+
+  useEffect(() => {
+    if (loading || !loadMeasurementPendingRef.current) return;
+    PerfTracker.measure("Favorites", "load", "content-rendered", `${favorites.length} items`);
+    loadMeasurementPendingRef.current = false;
+  }, [favorites.length, loading, error]);
 
   const renderItem = useCallback(
     ({ item }: { item: Favorite & { key: string }; index: number }) => {

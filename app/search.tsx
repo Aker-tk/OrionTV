@@ -20,6 +20,7 @@ import ResponsiveNavigation from "@/components/navigation/ResponsiveNavigation";
 import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
 import { DeviceUtils } from "@/utils/DeviceUtils";
 import { getPosterWallConfig } from "@/utils/posterWallConfig";
+import { PerfTracker } from "@/utils/PerfTracker";
 import Logger from '@/utils/Logger';
 
 const logger = Logger.withTag('SearchScreen');
@@ -30,6 +31,7 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textInputRef = useRef<TextInput>(null);
+  const searchMeasurementLabelRef = useRef<string | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const { showModal: showRemoteModal, lastMessage, targetPage, clearMessage } = useRemoteControlStore();
   const { remoteInputEnabled } = useSettingsStore();
@@ -62,6 +64,24 @@ export default function SearchScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastMessage, targetPage]);
 
+  useEffect(() => {
+    if (loading) return;
+
+    const measurementLabel = searchMeasurementLabelRef.current;
+    if (!measurementLabel) return;
+
+    if (error) {
+      PerfTracker.measure("Search", measurementLabel, "error-rendered", error);
+      searchMeasurementLabelRef.current = null;
+      return;
+    }
+
+    if (results.length > 0) {
+      PerfTracker.measure("Search", measurementLabel, "results-rendered", `${results.length} results`);
+      searchMeasurementLabelRef.current = null;
+    }
+  }, [error, loading, results.length]);
+
   // useEffect(() => {
   //   // Focus the text input when the screen loads
   //   const timer = setTimeout(() => {
@@ -77,6 +97,9 @@ export default function SearchScreen() {
       return;
     }
     Keyboard.dismiss();
+    const measurementLabel = `search:${term}`;
+    PerfTracker.mark("Search", measurementLabel);
+    searchMeasurementLabelRef.current = measurementLabel;
     setLoading(true);
     setError(null);
     try {

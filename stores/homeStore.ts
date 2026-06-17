@@ -68,6 +68,11 @@ interface CacheItem {
 const CACHE_EXPIRE_TIME = 5 * 60 * 1000; // 5分钟过期
 const MAX_CACHE_SIZE = 10; // 最大缓存容量
 const MAX_ITEMS_PER_CACHE = 40; // 每个缓存最大条目数
+const AUTH_STATUS_CACHE_TTL = 30 * 1000;
+
+let lastAuthStatusCheckAt = 0;
+let lastAuthStatusBaseUrl: string | null = null;
+let pendingAuthStatusCheck: Promise<void> | null = null;
 
 const getCacheKey = (category: Category) => {
   return `${category.type || 'unknown'}-${category.title}-${category.tag || ''}`;
@@ -75,6 +80,31 @@ const getCacheKey = (category: Category) => {
 
 const isValidCache = (cacheItem: CacheItem) => {
   return Date.now() - cacheItem.timestamp < CACHE_EXPIRE_TIME;
+};
+
+const ensureFreshAuthStatus = async () => {
+  const { apiBaseUrl } = useSettingsStore.getState();
+  const baseUrl = apiBaseUrl || LOCAL_MODE_BASE_URL;
+  const now = Date.now();
+
+  if (pendingAuthStatusCheck && lastAuthStatusBaseUrl === baseUrl) {
+    await pendingAuthStatusCheck;
+    return;
+  }
+
+  if (lastAuthStatusBaseUrl === baseUrl && now - lastAuthStatusCheckAt < AUTH_STATUS_CACHE_TTL) {
+    return;
+  }
+
+  lastAuthStatusBaseUrl = baseUrl;
+  pendingAuthStatusCheck = useAuthStore.getState().checkLoginStatus(baseUrl);
+
+  try {
+    await pendingAuthStatusCheck;
+    lastAuthStatusCheckAt = Date.now();
+  } finally {
+    pendingAuthStatusCheck = null;
+  }
 };
 
 interface HomeState {
@@ -107,8 +137,7 @@ const useHomeStore = create<HomeState>((set, get) => ({
   error: null,
 
   fetchInitialData: async () => {
-    const { apiBaseUrl } = useSettingsStore.getState();
-    await useAuthStore.getState().checkLoginStatus(apiBaseUrl || LOCAL_MODE_BASE_URL);
+    await ensureFreshAuthStatus();
 
     const { selectedCategory } = get();
     const cacheKey = getCacheKey(selectedCategory);
@@ -311,8 +340,7 @@ const useHomeStore = create<HomeState>((set, get) => ({
   },
 
   refreshPlayRecords: async () => {
-    const { apiBaseUrl } = useSettingsStore.getState();
-    await useAuthStore.getState().checkLoginStatus(apiBaseUrl || LOCAL_MODE_BASE_URL);
+    await ensureFreshAuthStatus();
     const { isLoggedIn } = useAuthStore.getState();
     if (!isLoggedIn) {
       set((state) => {

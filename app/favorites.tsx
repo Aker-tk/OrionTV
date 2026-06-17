@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
@@ -20,35 +20,48 @@ export default function FavoritesScreen() {
   const responsiveConfig = useResponsiveLayout();
   const commonStyles = getCommonResponsiveStyles(responsiveConfig);
   const { deviceType, spacing } = responsiveConfig;
-  const posterWallConfig = getPosterWallConfig(responsiveConfig);
+  const posterWallConfig = useMemo(
+    () => getPosterWallConfig(responsiveConfig),
+    [
+      responsiveConfig.cardHeight,
+      responsiveConfig.cardWidth,
+      responsiveConfig.columns,
+      responsiveConfig.deviceType,
+      responsiveConfig.screenWidth,
+      responsiveConfig.spacing,
+    ]
+  );
 
   useEffect(() => {
     fetchFavorites();
   }, [fetchFavorites]);
 
-  const renderItem = ({ item }: { item: Favorite & { key: string }; index: number }) => {
-    const [source, id] = item.key.split("+");
-    return (
-      <VideoCard
-        id={id}
-        source={source}
-        title={item.title}
-        sourceName={item.source_name}
-        poster={item.cover}
-        year={item.year}
-        api={api}
-        episodeIndex={1}
-        progress={0}
-        deviceType={deviceType}
-        cardWidth={posterWallConfig.itemWidth}
-        cardHeight={posterWallConfig.cardHeight}
-        spacing={posterWallConfig.itemSpacing}
-      />
-    );
-  };
+  const renderItem = useCallback(
+    ({ item }: { item: Favorite & { key: string }; index: number }) => {
+      const [source, id] = item.key.split("+");
+      return (
+        <VideoCard
+          id={id}
+          source={source}
+          title={item.title}
+          sourceName={item.source_name}
+          poster={item.cover}
+          year={item.year}
+          api={api}
+          episodeIndex={1}
+          progress={0}
+          deviceType={deviceType}
+          cardWidth={posterWallConfig.itemWidth}
+          cardHeight={posterWallConfig.cardHeight}
+          spacing={posterWallConfig.itemSpacing}
+        />
+      );
+    },
+    [deviceType, posterWallConfig.cardHeight, posterWallConfig.itemSpacing, posterWallConfig.itemWidth]
+  );
 
   // 动态样式
-  const dynamicStyles = createResponsiveStyles(deviceType, spacing);
+  const dynamicStyles = useMemo(() => createResponsiveStyles(deviceType, spacing), [deviceType, spacing]);
 
   const renderFavoritesContent = () => (
     <>

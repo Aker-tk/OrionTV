@@ -50,6 +50,7 @@ export default function HomeScreen() {
   } = useHomeStore();
   const { isLoggedIn, logout } = useAuthStore();
   const apiConfigStatus = useApiConfig();
+  const selectedCategoryTagsKey = selectedCategory?.tags?.join("|") ?? "";
 
   useFocusEffect(
     useCallback(() => {
@@ -114,8 +115,10 @@ export default function HomeScreen() {
       }
     }
   }, [
-    selectedCategory,
+    selectedCategory?.title,
+    selectedCategory?.type,
     selectedCategory?.tag,
+    selectedCategoryTagsKey,
     apiConfigStatus.isConfigured,
     apiConfigStatus.needsConfiguration,
     fetchInitialData,

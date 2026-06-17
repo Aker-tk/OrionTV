@@ -447,7 +447,28 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       return;
     }
 
-    const { currentEpisodeIndex, episodes, outroStartTime, playEpisode, status: prevStatus, progressPosition: prevProgress } = get();
+    const {
+      currentEpisodeIndex,
+      episodes,
+      outroStartTime,
+      playEpisode,
+      status: prevStatus,
+      progressPosition: prevProgress,
+      _isRecordSaveThrottled,
+    } = get();
+
+    const newProgress = newStatus.durationMillis ? newStatus.positionMillis / newStatus.durationMillis : 0;
+    const progressDelta = Math.abs(newProgress - prevProgress);
+    const secondChanged = !prevStatus?.isLoaded ||
+      Math.floor((prevStatus.positionMillis || 0) / 1000) !== Math.floor((newStatus.positionMillis || 0) / 1000);
+    const playbackStateChanged = !prevStatus?.isLoaded ||
+      prevStatus.isPlaying !== newStatus.isPlaying;
+    const hasMeaningfulPlaybackChange = progressDelta > 0.002 || secondChanged || playbackStateChanged;
+
+    if (_isRecordSaveThrottled && !hasMeaningfulPlaybackChange && !outroStartTime && !newStatus.didJustFinish) {
+      return;
+    }
+
     const detail = useDetailStore.getState().detail;
 
     if (
@@ -461,7 +482,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       }
     }
 
-    if (detail && newStatus.durationMillis) {
+    if (detail && newStatus.durationMillis && hasMeaningfulPlaybackChange) {
       get()._savePlayRecord();
 
       const isNearEnd = newStatus.positionMillis / newStatus.durationMillis > 0.95;
@@ -478,14 +499,7 @@ const usePlayerStore = create<PlayerState>((set, get) => ({
       }
     }
 
-    const newProgress = newStatus.durationMillis ? newStatus.positionMillis / newStatus.durationMillis : 0;
-    const progressDelta = Math.abs(newProgress - prevProgress);
-    const secondChanged = !prevStatus?.isLoaded ||
-      Math.floor((prevStatus.positionMillis || 0) / 1000) !== Math.floor((newStatus.positionMillis || 0) / 1000);
-    const playbackStateChanged = !prevStatus?.isLoaded ||
-      prevStatus.isPlaying !== newStatus.isPlaying;
-
-    if (progressDelta > 0.002 || secondChanged || playbackStateChanged) {
+    if (hasMeaningfulPlaybackChange) {
       set({ status: newStatus, progressPosition: newProgress });
     }
   },

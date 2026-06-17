@@ -36,6 +36,7 @@ describe("CustomScrollView", () => {
     expect(list.props.scrollEventThrottle).toBe(64);
     expect(list.props.initialNumToRender).toBe(10);
     expect(list.props.maxToRenderPerBatch).toBe(10);
+    expect(list.props.windowSize).toBe(7);
   });
 
   it("calls onEndReached once for repeated bottom scroll events before loading state updates", () => {

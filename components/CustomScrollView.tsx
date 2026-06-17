@@ -99,6 +99,7 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
   const effectiveItemSpacing = itemSpacing ?? responsiveConfig.spacing;
   const effectiveHorizontalPadding = contentHorizontalPadding ?? responsiveConfig.spacing / 2;
   const shouldDistributeColumns = Boolean(columnWrapperStyle) && effectiveColumns > 1;
+  const windowSize = deviceType === 'tv' ? 7 : 5;
 
   const handleScroll = useCallback(
     ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -222,7 +223,7 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
         showsVerticalScrollIndicator={responsiveConfig.deviceType !== 'tv'}
         initialNumToRender={effectiveColumns * 2}
         maxToRenderPerBatch={effectiveColumns * 2}
-        windowSize={5}
+        windowSize={windowSize}
         removeClippedSubviews={true}
         ListFooterComponent={renderFooter}
       />

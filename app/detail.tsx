@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
@@ -103,7 +103,7 @@ export default function DetailScreen() {
   }
 
   // 动态样式
-  const dynamicStyles = createResponsiveStyles(deviceType, spacing);
+  const dynamicStyles = useMemo(() => createResponsiveStyles(deviceType, spacing), [deviceType, spacing]);
 
   const renderDetailContent = () => {
     if (deviceType === 'mobile') {
@@ -145,11 +145,11 @@ export default function DetailScreen() {
               {!allSourcesLoaded && <ActivityIndicator style={{ marginLeft: 10 }} />}
             </View>
             <View style={dynamicStyles.sourceList}>
-              {searchResults.map((item, index) => {
+              {searchResults.map((item) => {
                 const isSelected = detail?.source === item.source;
                 return (
                   <StyledButton
-                    key={index}
+                    key={item.source}
                     onPress={() => setDetail(item)}
                     isSelected={isSelected}
                     style={dynamicStyles.sourceButton}
@@ -231,7 +231,7 @@ export default function DetailScreen() {
                   const isSelected = detail?.source === item.source;
                   return (
                     <StyledButton
-                      key={index}
+                      key={item.source}
                       onPress={() => setDetail(item)}
                       hasTVPreferredFocus={index === 0}
                       isSelected={isSelected}
@@ -260,7 +260,7 @@ export default function DetailScreen() {
               <ScrollView contentContainerStyle={dynamicStyles.episodeList}>
                 {detail.episodes.map((episode: string, index: number) => (
                   <StyledButton
-                    key={index}
+                    key={episode}
                     style={dynamicStyles.episodeButton}
                     onPress={() => handlePlay(index)}
                     text={`第 ${index + 1} 集`}

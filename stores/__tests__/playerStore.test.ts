@@ -249,4 +249,32 @@ describe("usePlayerStore", () => {
     );
     expect(usePlayerStore.getState().isLoading).toBe(false);
   });
+
+  it("skips detail lookups for throttled sub-second playback updates", () => {
+    const savePlayRecord = jest.fn();
+    usePlayerStore.setState({
+      currentEpisodeIndex: 0,
+      episodes: [{ url: "https://example.com/video.m3u8", title: "第 1 集" }],
+      status: {
+        isLoaded: true,
+        positionMillis: 1000,
+        durationMillis: 100000,
+        isPlaying: true,
+      } as any,
+      progressPosition: 0.01,
+      _isRecordSaveThrottled: true,
+      _savePlayRecord: savePlayRecord,
+    });
+
+    usePlayerStore.getState().handlePlaybackStatusUpdate({
+      isLoaded: true,
+      positionMillis: 1005,
+      durationMillis: 100000,
+      isPlaying: true,
+      didJustFinish: false,
+    } as any);
+
+    expect(useDetailStore.getState).not.toHaveBeenCalled();
+    expect(savePlayRecord).not.toHaveBeenCalled();
+  });
 });

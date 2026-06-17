@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { View, TextInput, StyleSheet, Alert, Keyboard, TouchableOpacity } from "react-native";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
@@ -39,7 +39,17 @@ export default function SearchScreen() {
   const responsiveConfig = useResponsiveLayout();
   const commonStyles = getCommonResponsiveStyles(responsiveConfig);
   const { deviceType, spacing } = responsiveConfig;
-  const posterWallConfig = getPosterWallConfig(responsiveConfig);
+  const posterWallConfig = useMemo(
+    () => getPosterWallConfig(responsiveConfig),
+    [
+      responsiveConfig.cardHeight,
+      responsiveConfig.cardWidth,
+      responsiveConfig.columns,
+      responsiveConfig.deviceType,
+      responsiveConfig.screenWidth,
+      responsiveConfig.spacing,
+    ]
+  );
 
   useEffect(() => {
     if (lastMessage && targetPage === 'search') {
@@ -97,24 +107,27 @@ export default function SearchScreen() {
     showRemoteModal('search');
   };
 
-  const renderItem = ({ item }: { item: SearchResult; index: number }) => (
-    <VideoCard
-      id={item.id.toString()}
-      source={item.source}
-      title={item.title}
-      poster={item.poster}
-      year={item.year}
-      sourceName={item.source_name}
-      api={api}
-      deviceType={deviceType}
-      cardWidth={posterWallConfig.itemWidth}
-      cardHeight={posterWallConfig.cardHeight}
-      spacing={posterWallConfig.itemSpacing}
-    />
+  const renderItem = useCallback(
+    ({ item }: { item: SearchResult; index: number }) => (
+      <VideoCard
+        id={item.id.toString()}
+        source={item.source}
+        title={item.title}
+        poster={item.poster}
+        year={item.year}
+        sourceName={item.source_name}
+        api={api}
+        deviceType={deviceType}
+        cardWidth={posterWallConfig.itemWidth}
+        cardHeight={posterWallConfig.cardHeight}
+        spacing={posterWallConfig.itemSpacing}
+      />
+    ),
+    [deviceType, posterWallConfig.cardHeight, posterWallConfig.itemSpacing, posterWallConfig.itemWidth]
   );
 
   // 动态样式
-  const dynamicStyles = createResponsiveStyles(deviceType, spacing);
+  const dynamicStyles = useMemo(() => createResponsiveStyles(deviceType, spacing), [deviceType, spacing]);
 
   const renderSearchContent = () => (
     <>

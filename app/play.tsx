@@ -17,6 +17,7 @@ import Toast from "react-native-toast-message";
 import usePlayerStore, { selectCurrentEpisode } from "@/stores/playerStore";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { useVideoHandlers } from "@/hooks/useVideoHandlers";
+import { PerfTracker } from "@/utils/PerfTracker";
 import Logger from '@/utils/Logger';
 
 const logger = Logger.withTag('PlayScreen');
@@ -71,6 +72,8 @@ const createResponsiveStyles = (deviceType: string) => {
 
 export default function PlayScreen() {
   const videoRef = useRef<Video>(null);
+  const mountMeasurementLabelRef = useRef<string | null>(null);
+  const firstVideoRenderedRef = useRef(false);
   const router = useRouter();
   useKeepAwake();
 
@@ -137,6 +140,10 @@ export default function PlayScreen() {
 
     setVideoRef(videoRef);
     if (source && id && title) {
+      const measurementLabel = `mount:${source}:${id}`;
+      PerfTracker.mark("Play", measurementLabel);
+      mountMeasurementLabelRef.current = measurementLabel;
+      firstVideoRenderedRef.current = false;
       logger.info(`[PERF] Calling loadVideo with episodeIndex: ${episodeIndex}, position: ${position}`);
       loadVideo({ source, id, episodeIndex, position, title });
     } else {
@@ -151,6 +158,20 @@ export default function PlayScreen() {
       reset(); // Reset state when component unmounts
     };
   }, [episodeIndex, source, position, setVideoRef, reset, loadVideo, id, title]);
+
+  useEffect(() => {
+    if (!currentEpisode?.url || !mountMeasurementLabelRef.current || firstVideoRenderedRef.current) {
+      return;
+    }
+
+    PerfTracker.measure(
+      "Play",
+      mountMeasurementLabelRef.current,
+      "first-video-rendered",
+      currentEpisode.title || currentEpisode.url
+    );
+    firstVideoRenderedRef.current = true;
+  }, [currentEpisode]);
 
   // 优化的屏幕点击处理
   const onScreenPress = useCallback(() => {

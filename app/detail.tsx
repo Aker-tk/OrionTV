@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, FlatList } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
@@ -11,10 +11,12 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { getCommonResponsiveStyles } from "@/utils/ResponsiveStyles";
 import ResponsiveNavigation from "@/components/navigation/ResponsiveNavigation";
 import ResponsiveHeader from "@/components/navigation/ResponsiveHeader";
+import { PerfTracker } from "@/utils/PerfTracker";
 
 export default function DetailScreen() {
   const { q, source, id } = useLocalSearchParams<{ q: string; source?: string; id?: string }>();
   const router = useRouter();
+  const contentRenderedMeasurementRef = useRef<string | null>(null);
 
   // 响应式布局配置
   const responsiveConfig = useResponsiveLayout();
@@ -43,6 +45,20 @@ export default function DetailScreen() {
       abort();
     };
   }, [abort, init, q, source, id]);
+
+  useEffect(() => {
+    if (!q || loading || error || !detail) {
+      return;
+    }
+
+    const measurementLabel = `init:${q}`;
+    if (contentRenderedMeasurementRef.current === measurementLabel) {
+      return;
+    }
+
+    PerfTracker.measure("Detail", measurementLabel, "content-rendered", `${detail.source}:${detail.episodes.length} episodes`);
+    contentRenderedMeasurementRef.current = measurementLabel;
+  }, [detail, error, loading, q]);
 
   const handlePlay = (episodeIndex: number) => {
     if (!detail) return;

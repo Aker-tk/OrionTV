@@ -2,7 +2,7 @@ import React from "react";
 import renderer, { act } from "react-test-renderer";
 import { FlatList, Text } from "react-native";
 
-import CustomScrollView from "../CustomScrollView";
+import CustomScrollView, { updateScrollToTopVisibility } from "../CustomScrollView";
 
 jest.mock("@/hooks/useResponsiveLayout", () => ({
   useResponsiveLayout: () => ({
@@ -68,5 +68,20 @@ describe("CustomScrollView", () => {
     });
 
     expect(onEndReached).toHaveBeenCalledTimes(1);
+  });
+
+  it("only updates scroll-to-top visibility when the threshold crosses", () => {
+    const setScrollToTopVisible = jest.fn();
+
+    expect(updateScrollToTopVisibility(250, false, setScrollToTopVisible)).toBe(true);
+    expect(setScrollToTopVisible).toHaveBeenCalledWith(true);
+
+    setScrollToTopVisible.mockClear();
+
+    expect(updateScrollToTopVisibility(260, true, setScrollToTopVisible)).toBe(true);
+    expect(setScrollToTopVisible).not.toHaveBeenCalled();
+
+    expect(updateScrollToTopVisibility(180, true, setScrollToTopVisible)).toBe(false);
+    expect(setScrollToTopVisible).toHaveBeenCalledWith(false);
   });
 });

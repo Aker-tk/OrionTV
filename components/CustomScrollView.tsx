@@ -32,6 +32,21 @@ interface CustomScrollViewProps {
   ListFooterComponent?: React.ComponentType<any> | React.ReactElement | null;
 }
 
+export const updateScrollToTopVisibility = (
+  offsetY: number,
+  currentVisible: boolean,
+  setVisible: (visible: boolean) => void,
+  threshold = 200
+) => {
+  const nextVisible = offsetY > threshold;
+
+  if (nextVisible !== currentVisible) {
+    setVisible(nextVisible);
+  }
+
+  return nextVisible;
+};
+
 const CustomScrollView: React.FC<CustomScrollViewProps> = ({
   data,
   renderItem,
@@ -51,6 +66,7 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
   const listRef = useRef<FlatList<any>>(null);
   const firstCardRef = useRef<any>(null); // <--- 新增
   const endReachedPendingRef = useRef(false);
+  const showScrollToTopRef = useRef(false);
   const previousLoadingMoreRef = useRef(loadingMore);
   const previousDataLengthRef = useRef(data.length);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
@@ -107,8 +123,11 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
       const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - loadMoreThreshold;
 
       // 显示/隐藏返回顶部按钮
-      const shouldShowScrollToTop = contentOffset.y > 200;
-      setShowScrollToTop((current) => (current === shouldShowScrollToTop ? current : shouldShowScrollToTop));
+      showScrollToTopRef.current = updateScrollToTopVisibility(
+        contentOffset.y,
+        showScrollToTopRef.current,
+        setShowScrollToTop
+      );
 
       if (isCloseToBottom && !loadingMore && onEndReached && !endReachedPendingRef.current) {
         endReachedPendingRef.current = true;

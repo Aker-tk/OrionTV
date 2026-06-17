@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, FlatList } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
 import { ThemedText } from "@/components/ThemedText";
@@ -20,6 +20,7 @@ export default function DetailScreen() {
   const responsiveConfig = useResponsiveLayout();
   const commonStyles = getCommonResponsiveStyles(responsiveConfig);
   const { deviceType, spacing } = responsiveConfig;
+  const episodeColumnCount = Math.max(1, responsiveConfig.columns);
 
   const {
     detail,
@@ -257,8 +258,11 @@ export default function DetailScreen() {
             </View>
             <View style={dynamicStyles.episodesContainer}>
               <ThemedText style={dynamicStyles.episodesTitle}>播放列表</ThemedText>
-              <ScrollView contentContainerStyle={dynamicStyles.episodeList}>
-                {detail.episodes.map((episode: string, index: number) => (
+              <FlatList
+                key={`episodes-${episodeColumnCount}`}
+                data={detail.episodes}
+                keyExtractor={(episode: string) => episode}
+                renderItem={({ item: episode, index }) => (
                   <StyledButton
                     key={episode}
                     style={dynamicStyles.episodeButton}
@@ -266,8 +270,18 @@ export default function DetailScreen() {
                     text={`第 ${index + 1} 集`}
                     textStyle={dynamicStyles.episodeButtonText}
                   />
-                ))}
-              </ScrollView>
+                )}
+                numColumns={episodeColumnCount}
+                style={dynamicStyles.episodeListViewport}
+                contentContainerStyle={dynamicStyles.episodeListContent}
+                columnWrapperStyle={episodeColumnCount > 1 ? dynamicStyles.episodeRow : undefined}
+                initialNumToRender={Math.min(detail.episodes.length, episodeColumnCount * 3)}
+                maxToRenderPerBatch={episodeColumnCount * 3}
+                windowSize={5}
+                removeClippedSubviews
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+              />
             </View>
           </View>
         </ScrollView>
@@ -436,6 +450,15 @@ const createResponsiveStyles = (deviceType: string, spacing: number) => {
     episodeList: {
       flexDirection: "row",
       flexWrap: "wrap",
+    },
+    episodeListViewport: {
+      maxHeight: isTV ? 260 : 220,
+    },
+    episodeListContent: {
+      paddingBottom: spacing,
+    },
+    episodeRow: {
+      justifyContent: "flex-start",
     },
     episodeButton: {
       margin: isMobile ? 3 : 5,
